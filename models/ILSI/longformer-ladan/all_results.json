@@ -1,0 +1,22 @@
+{
+    "eval_c-f1": 0.42486815137377093,
+    "eval_c-prec": 0.433388747596303,
+    "eval_c-rec": 0.4682255652843888,
+    "eval_f1": 0.2448260203848439,
+    "eval_loss": 6.210444927215576,
+    "eval_prec": 0.29452901192374875,
+    "eval_rec": 0.2338930546577605,
+    "eval_runtime": 7.6625,
+    "eval_samples_per_second": 6.525,
+    "eval_steps_per_second": 0.261,
+    "test_c-f1": 0.42486815137377093,
+    "test_c-prec": 0.433388747596303,
+    "test_c-rec": 0.4682255652843888,
+    "test_f1": 0.2448260203848439,
+    "test_loss": 6.210444927215576,
+    "test_prec": 0.29452901192374875,
+    "test_rec": 0.2338930546577605,
+    "test_runtime": 7.4044,
+    "test_samples_per_second": 6.753,
+    "test_steps_per_second": 0.27
+}

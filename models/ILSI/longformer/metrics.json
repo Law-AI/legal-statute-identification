@@ -1,0 +1,1002 @@
+[
+    {
+        "id": "Section 2 in The Indian Penal Code",
+        "title": "Punishment of offences committed within India",
+        "tp": 3,
+        "fp": 1,
+        "fn": 114,
+        "index": 0,
+        "prec": 0.75,
+        "rec": 0.02564102564102564
+    },
+    {
+        "id": "Section 3 in The Indian Penal Code",
+        "title": "Punishment of offences committed beyond, but which by law may be tried within, India",
+        "tp": 9,
+        "fp": 26,
+        "fn": 313,
+        "index": 1,
+        "prec": 0.2571428571428571,
+        "rec": 0.027950310559006212
+    },
+    {
+        "id": "Section 4 in The Indian Penal Code",
+        "title": "Extension of Code to extra-territorial offences",
+        "tp": 2,
+        "fp": 1,
+        "fn": 116,
+        "index": 2,
+        "prec": 0.6666666666666666,
+        "rec": 0.01694915254237288
+    },
+    {
+        "id": "Section 5 in The Indian Penal Code",
+        "title": "Certain laws not to be affected by this Act",
+        "tp": 13,
+        "fp": 32,
+        "fn": 128,
+        "index": 3,
+        "prec": 0.28888888888888886,
+        "rec": 0.09219858156028368
+    },
+    {
+        "id": "Section 13 in The Indian Penal Code",
+        "title": "\"Queen\"",
+        "tp": 17,
+        "fp": 16,
+        "fn": 89,
+        "index": 4,
+        "prec": 0.5151515151515151,
+        "rec": 0.16037735849056603
+    },
+    {
+        "id": "Section 34 in The Indian Penal Code",
+        "title": "Acts done by several persons in furtherance of common intention",
+        "tp": 1266,
+        "fp": 667,
+        "fn": 2465,
+        "index": 5,
+        "prec": 0.6549405069839628,
+        "rec": 0.33931921736799786
+    },
+    {
+        "id": "Section 107 in The Indian Penal Code",
+        "title": "Abetment of a thing",
+        "tp": 57,
+        "fp": 27,
+        "fn": 161,
+        "index": 6,
+        "prec": 0.6785714285714286,
+        "rec": 0.26146788990825687
+    },
+    {
+        "id": "Section 109 in The Indian Penal Code",
+        "title": "Punishment of abetment if the act abetted is committed in consequence and where no express provision is made for its punishment",
+        "tp": 3,
+        "fp": 6,
+        "fn": 322,
+        "index": 7,
+        "prec": 0.3333333333333333,
+        "rec": 0.009230769230769232
+    },
+    {
+        "id": "Section 114 in The Indian Penal Code",
+        "title": "Abettor present when offence is committed",
+        "tp": 0,
+        "fp": 0,
+        "fn": 122,
+        "index": 8,
+        "prec": 0,
+        "rec": 0
+    },
+    {
+        "id": "Section 120 in The Indian Penal Code",
+        "title": "Concealing design to commit offence punishable with impris\u00adonment",
+        "tp": 6,
+        "fp": 3,
+        "fn": 250,
+        "index": 9,
+        "prec": 0.6666666666666666,
+        "rec": 0.0234375
+    },
+    {
+        "id": "Section 120B in The Indian Penal Code",
+        "title": "Punishment of criminal conspiracy",
+        "tp": 336,
+        "fp": 188,
+        "fn": 957,
+        "index": 10,
+        "prec": 0.6412213740458015,
+        "rec": 0.25986078886310904
+    },
+    {
+        "id": "Section 143 in The Indian Penal Code",
+        "title": "Punishment for unlawful assembly",
+        "tp": 40,
+        "fp": 5,
+        "fn": 229,
+        "index": 11,
+        "prec": 0.8888888888888888,
+        "rec": 0.14869888475836432
+    },
+    {
+        "id": "Section 147 in The Indian Penal Code",
+        "title": "Punishment for rioting",
+        "tp": 324,
+        "fp": 141,
+        "fn": 1057,
+        "index": 12,
+        "prec": 0.6967741935483871,
+        "rec": 0.2346125995655322
+    },
+    {
+        "id": "Section 148 in The Indian Penal Code",
+        "title": "Rioting, armed with deadly weapon",
+        "tp": 405,
+        "fp": 133,
+        "fn": 887,
+        "index": 13,
+        "prec": 0.7527881040892194,
+        "rec": 0.31346749226006193
+    },
+    {
+        "id": "Section 149 in The Indian Penal Code",
+        "title": "Every member of unlawful assembly guilty of offence commit\u00adted in prosecution of common object",
+        "tp": 434,
+        "fp": 146,
+        "fn": 758,
+        "index": 14,
+        "prec": 0.7482758620689656,
+        "rec": 0.3640939597315436
+    },
+    {
+        "id": "Section 155 in The Indian Penal Code",
+        "title": "Liability of person for whose benefit riot is committed",
+        "tp": 2,
+        "fp": 8,
+        "fn": 105,
+        "index": 15,
+        "prec": 0.2,
+        "rec": 0.018691588785046728
+    },
+    {
+        "id": "Section 156 in The Indian Penal Code",
+        "title": "Liability of agent of owner or occupier for whose benefit riot is committed",
+        "tp": 43,
+        "fp": 43,
+        "fn": 171,
+        "index": 16,
+        "prec": 0.5,
+        "rec": 0.20093457943925233
+    },
+    {
+        "id": "Section 161 in The Indian Penal Code",
+        "title": "Repealed",
+        "tp": 48,
+        "fp": 29,
+        "fn": 213,
+        "index": 17,
+        "prec": 0.6233766233766234,
+        "rec": 0.1839080459770115
+    },
+    {
+        "id": "Section 164 in The Indian Penal Code",
+        "title": "Repealed",
+        "tp": 16,
+        "fp": 6,
+        "fn": 107,
+        "index": 18,
+        "prec": 0.7272727272727273,
+        "rec": 0.13008130081300814
+    },
+    {
+        "id": "Section 173 in The Indian Penal Code",
+        "title": "Preventing service of summons or other proceeding, or pre\u00adventing publication thereof",
+        "tp": 28,
+        "fp": 35,
+        "fn": 136,
+        "index": 19,
+        "prec": 0.4444444444444444,
+        "rec": 0.17073170731707318
+    },
+    {
+        "id": "Section 174A in The Indian Penal Code",
+        "title": "Non-appearance in response to a proclamation under section 82 of Act 2 of 1974",
+        "tp": 130,
+        "fp": 60,
+        "fn": 23,
+        "index": 20,
+        "prec": 0.6842105263157895,
+        "rec": 0.8496732026143791
+    },
+    {
+        "id": "Section 186 in The Indian Penal Code",
+        "title": "Obstructing public servant in discharge of public functions",
+        "tp": 23,
+        "fp": 26,
+        "fn": 187,
+        "index": 21,
+        "prec": 0.46938775510204084,
+        "rec": 0.10952380952380952
+    },
+    {
+        "id": "Section 188 in The Indian Penal Code",
+        "title": "Disobedience to order duly promulgated by public servant",
+        "tp": 40,
+        "fp": 11,
+        "fn": 125,
+        "index": 22,
+        "prec": 0.7843137254901961,
+        "rec": 0.24242424242424243
+    },
+    {
+        "id": "Section 190 in The Indian Penal Code",
+        "title": "Threat of injury to induce person to refrain from applying for protection to public servant",
+        "tp": 11,
+        "fp": 5,
+        "fn": 85,
+        "index": 23,
+        "prec": 0.6875,
+        "rec": 0.11458333333333333
+    },
+    {
+        "id": "Section 193 in The Indian Penal Code",
+        "title": "Punishment for false evidence",
+        "tp": 46,
+        "fp": 104,
+        "fn": 101,
+        "index": 24,
+        "prec": 0.30666666666666664,
+        "rec": 0.3129251700680272
+    },
+    {
+        "id": "Section 200 in The Indian Penal Code",
+        "title": "Using as true such declaration knowing it to be false",
+        "tp": 6,
+        "fp": 11,
+        "fn": 84,
+        "index": 25,
+        "prec": 0.35294117647058826,
+        "rec": 0.06666666666666667
+    },
+    {
+        "id": "Section 201 in The Indian Penal Code",
+        "title": "Causing disappearance of evidence of offence, or giving false information to screen offender",
+        "tp": 229,
+        "fp": 96,
+        "fn": 369,
+        "index": 26,
+        "prec": 0.7046153846153846,
+        "rec": 0.38294314381270905
+    },
+    {
+        "id": "Section 228 in The Indian Penal Code",
+        "title": "Intentional insult or interruption to public servant sitting in judicial proceeding",
+        "tp": 6,
+        "fp": 17,
+        "fn": 97,
+        "index": 27,
+        "prec": 0.2608695652173913,
+        "rec": 0.05825242718446602
+    },
+    {
+        "id": "Section 229A in The Indian Penal Code",
+        "title": "Failure by person released on bail or bond to appear in Court",
+        "tp": 163,
+        "fp": 56,
+        "fn": 26,
+        "index": 28,
+        "prec": 0.7442922374429224,
+        "rec": 0.8624338624338624
+    },
+    {
+        "id": "Section 279 in The Indian Penal Code",
+        "title": "Rash driving or riding on a public way",
+        "tp": 99,
+        "fp": 40,
+        "fn": 56,
+        "index": 29,
+        "prec": 0.7122302158273381,
+        "rec": 0.6387096774193548
+    },
+    {
+        "id": "Section 294 in The Indian Penal Code",
+        "title": "Obscene acts and songs",
+        "tp": 252,
+        "fp": 81,
+        "fn": 652,
+        "index": 30,
+        "prec": 0.7567567567567568,
+        "rec": 0.27876106194690264
+    },
+    {
+        "id": "Section 294(b) in The Indian Penal Code",
+        "title": "Obscene acts and songs",
+        "tp": 95,
+        "fp": 64,
+        "fn": 322,
+        "index": 31,
+        "prec": 0.5974842767295597,
+        "rec": 0.2278177458033573
+    },
+    {
+        "id": "Section 299 in The Indian Penal Code",
+        "title": "Culpable homicide",
+        "tp": 5,
+        "fp": 11,
+        "fn": 120,
+        "index": 32,
+        "prec": 0.3125,
+        "rec": 0.04
+    },
+    {
+        "id": "Section 300 in The Indian Penal Code",
+        "title": "Murder",
+        "tp": 157,
+        "fp": 130,
+        "fn": 306,
+        "index": 33,
+        "prec": 0.5470383275261324,
+        "rec": 0.3390928725701944
+    },
+    {
+        "id": "Section 302 in The Indian Penal Code",
+        "title": "Punishment for murder",
+        "tp": 2398,
+        "fp": 414,
+        "fn": 846,
+        "index": 34,
+        "prec": 0.852773826458037,
+        "rec": 0.7392108508014796
+    },
+    {
+        "id": "Section 304 in The Indian Penal Code",
+        "title": "Punishment for culpable homicide not amounting to murder",
+        "tp": 406,
+        "fp": 351,
+        "fn": 581,
+        "index": 35,
+        "prec": 0.5363276089828269,
+        "rec": 0.41134751773049644
+    },
+    {
+        "id": "Section 304A in The Indian Penal Code",
+        "title": "Causing death by negligence",
+        "tp": 107,
+        "fp": 33,
+        "fn": 71,
+        "index": 36,
+        "prec": 0.7642857142857142,
+        "rec": 0.601123595505618
+    },
+    {
+        "id": "Section 304B in The Indian Penal Code",
+        "title": "Dowry death",
+        "tp": 206,
+        "fp": 60,
+        "fn": 191,
+        "index": 37,
+        "prec": 0.7744360902255639,
+        "rec": 0.5188916876574308
+    },
+    {
+        "id": "Section 306 in The Indian Penal Code",
+        "title": "Abetment of suicide",
+        "tp": 337,
+        "fp": 100,
+        "fn": 197,
+        "index": 38,
+        "prec": 0.7711670480549199,
+        "rec": 0.6310861423220974
+    },
+    {
+        "id": "Section 307 in The Indian Penal Code",
+        "title": "Attempt to murder",
+        "tp": 376,
+        "fp": 157,
+        "fn": 1848,
+        "index": 39,
+        "prec": 0.7054409005628518,
+        "rec": 0.16906474820143885
+    },
+    {
+        "id": "Section 308 in The Indian Penal Code",
+        "title": "Attempt to commit culpable homicide",
+        "tp": 6,
+        "fp": 5,
+        "fn": 190,
+        "index": 40,
+        "prec": 0.5454545454545454,
+        "rec": 0.030612244897959183
+    },
+    {
+        "id": "Section 313 in The Indian Penal Code",
+        "title": "Causing miscarriage without woman\u2019s consent",
+        "tp": 7,
+        "fp": 12,
+        "fn": 249,
+        "index": 41,
+        "prec": 0.3684210526315789,
+        "rec": 0.02734375
+    },
+    {
+        "id": "Section 320 in The Indian Penal Code",
+        "title": "Grievous hurt",
+        "tp": 67,
+        "fp": 60,
+        "fn": 141,
+        "index": 42,
+        "prec": 0.5275590551181102,
+        "rec": 0.32211538461538464
+    },
+    {
+        "id": "Section 323 in The Indian Penal Code",
+        "title": "Punishment for voluntarily causing hurt",
+        "tp": 557,
+        "fp": 457,
+        "fn": 1933,
+        "index": 43,
+        "prec": 0.5493096646942801,
+        "rec": 0.22369477911646587
+    },
+    {
+        "id": "Section 324 in The Indian Penal Code",
+        "title": "Voluntarily causing hurt by dangerous weapons or means",
+        "tp": 113,
+        "fp": 97,
+        "fn": 1031,
+        "index": 44,
+        "prec": 0.5380952380952381,
+        "rec": 0.09877622377622378
+    },
+    {
+        "id": "Section 325 in The Indian Penal Code",
+        "title": "Punishment for voluntarily causing grievous hurt",
+        "tp": 77,
+        "fp": 45,
+        "fn": 795,
+        "index": 45,
+        "prec": 0.6311475409836066,
+        "rec": 0.08830275229357798
+    },
+    {
+        "id": "Section 326 in The Indian Penal Code",
+        "title": "Voluntarily causing grievous hurt by dangerous weapons or means",
+        "tp": 25,
+        "fp": 16,
+        "fn": 784,
+        "index": 46,
+        "prec": 0.6097560975609756,
+        "rec": 0.030902348578491966
+    },
+    {
+        "id": "Section 332 in The Indian Penal Code",
+        "title": "Voluntarily causing hurt to deter public servant from his duty",
+        "tp": 37,
+        "fp": 36,
+        "fn": 274,
+        "index": 47,
+        "prec": 0.5068493150684932,
+        "rec": 0.1189710610932476
+    },
+    {
+        "id": "Section 336 in The Indian Penal Code",
+        "title": "Act endangering life or personal safety of others",
+        "tp": 28,
+        "fp": 16,
+        "fn": 201,
+        "index": 48,
+        "prec": 0.6363636363636364,
+        "rec": 0.1222707423580786
+    },
+    {
+        "id": "Section 337 in The Indian Penal Code",
+        "title": "Causing hurt by act endangering life or personal safety of others",
+        "tp": 23,
+        "fp": 21,
+        "fn": 95,
+        "index": 49,
+        "prec": 0.5227272727272727,
+        "rec": 0.19491525423728814
+    },
+    {
+        "id": "Section 338 in The Indian Penal Code",
+        "title": "Causing grievous hurt by act endangering life or personal safety of others",
+        "tp": 24,
+        "fp": 18,
+        "fn": 75,
+        "index": 50,
+        "prec": 0.5714285714285714,
+        "rec": 0.24242424242424243
+    },
+    {
+        "id": "Section 341 in The Indian Penal Code",
+        "title": "Punishment for wrongful restraint",
+        "tp": 57,
+        "fp": 21,
+        "fn": 1015,
+        "index": 51,
+        "prec": 0.7307692307692307,
+        "rec": 0.05317164179104478
+    },
+    {
+        "id": "Section 342 in The Indian Penal Code",
+        "title": "Punishment for wrongful confinement",
+        "tp": 0,
+        "fp": 0,
+        "fn": 386,
+        "index": 52,
+        "prec": 0,
+        "rec": 0
+    },
+    {
+        "id": "Section 353 in The Indian Penal Code",
+        "title": "Assault or criminal force to deter public servant from discharge of his duty",
+        "tp": 95,
+        "fp": 69,
+        "fn": 385,
+        "index": 53,
+        "prec": 0.5792682926829268,
+        "rec": 0.19791666666666666
+    },
+    {
+        "id": "Section 354 in The Indian Penal Code",
+        "title": "Assault or criminal force to woman with intent to outrage her modesty",
+        "tp": 51,
+        "fp": 31,
+        "fn": 640,
+        "index": 54,
+        "prec": 0.6219512195121951,
+        "rec": 0.07380607814761216
+    },
+    {
+        "id": "Section 363 in The Indian Penal Code",
+        "title": "Punishment for kidnapping",
+        "tp": 190,
+        "fp": 52,
+        "fn": 369,
+        "index": 55,
+        "prec": 0.7851239669421488,
+        "rec": 0.33989266547406083
+    },
+    {
+        "id": "Section 364 in The Indian Penal Code",
+        "title": "Kidnapping or abducting in order to murder",
+        "tp": 55,
+        "fp": 46,
+        "fn": 137,
+        "index": 56,
+        "prec": 0.5445544554455446,
+        "rec": 0.2864583333333333
+    },
+    {
+        "id": "Section 365 in The Indian Penal Code",
+        "title": "Kidnapping or abducting with intent secretly and wrongfully to confine person",
+        "tp": 16,
+        "fp": 22,
+        "fn": 122,
+        "index": 57,
+        "prec": 0.42105263157894735,
+        "rec": 0.11594202898550725
+    },
+    {
+        "id": "Section 366 in The Indian Penal Code",
+        "title": "Kidnapping, abducting or inducing woman to compel her mar\u00adriage, etc.",
+        "tp": 174,
+        "fp": 72,
+        "fn": 274,
+        "index": 58,
+        "prec": 0.7073170731707317,
+        "rec": 0.38839285714285715
+    },
+    {
+        "id": "Section 366A in The Indian Penal Code",
+        "title": "Procuration of minor girl",
+        "tp": 17,
+        "fp": 9,
+        "fn": 85,
+        "index": 59,
+        "prec": 0.6538461538461539,
+        "rec": 0.16666666666666666
+    },
+    {
+        "id": "Section 375 in The Indian Penal Code",
+        "title": "Rape",
+        "tp": 7,
+        "fp": 12,
+        "fn": 105,
+        "index": 60,
+        "prec": 0.3684210526315789,
+        "rec": 0.0625
+    },
+    {
+        "id": "Section 376 in The Indian Penal Code",
+        "title": "Punishment for rape",
+        "tp": 609,
+        "fp": 163,
+        "fn": 556,
+        "index": 61,
+        "prec": 0.788860103626943,
+        "rec": 0.5227467811158798
+    },
+    {
+        "id": "Section 376(2) in The Indian Penal Code",
+        "title": "Punishment for rape",
+        "tp": 6,
+        "fp": 7,
+        "fn": 163,
+        "index": 62,
+        "prec": 0.46153846153846156,
+        "rec": 0.03550295857988166
+    },
+    {
+        "id": "Section 379 in The Indian Penal Code",
+        "title": "Punishment for theft",
+        "tp": 21,
+        "fp": 10,
+        "fn": 498,
+        "index": 63,
+        "prec": 0.6774193548387096,
+        "rec": 0.04046242774566474
+    },
+    {
+        "id": "Section 380 in The Indian Penal Code",
+        "title": "Theft in dwelling house, etc.",
+        "tp": 24,
+        "fp": 22,
+        "fn": 174,
+        "index": 64,
+        "prec": 0.5217391304347826,
+        "rec": 0.12121212121212122
+    },
+    {
+        "id": "Section 384 in The Indian Penal Code",
+        "title": "Putting person in fear of injury in order to commit extor\u00adtion",
+        "tp": 4,
+        "fp": 8,
+        "fn": 123,
+        "index": 65,
+        "prec": 0.3333333333333333,
+        "rec": 0.031496062992125984
+    },
+    {
+        "id": "Section 389 in The Indian Penal Code",
+        "title": "Putting person in fear of accusation of offence, in order to commit extortion",
+        "tp": 34,
+        "fp": 3,
+        "fn": 63,
+        "index": 66,
+        "prec": 0.918918918918919,
+        "rec": 0.35051546391752575
+    },
+    {
+        "id": "Section 392 in The Indian Penal Code",
+        "title": "Punishment for robbery",
+        "tp": 59,
+        "fp": 40,
+        "fn": 292,
+        "index": 67,
+        "prec": 0.5959595959595959,
+        "rec": 0.16809116809116809
+    },
+    {
+        "id": "Section 394 in The Indian Penal Code",
+        "title": "Voluntarily causing hurt in committing robbery",
+        "tp": 28,
+        "fp": 18,
+        "fn": 225,
+        "index": 68,
+        "prec": 0.6086956521739131,
+        "rec": 0.11067193675889328
+    },
+    {
+        "id": "Section 395 in The Indian Penal Code",
+        "title": "Punishment for dacoity",
+        "tp": 60,
+        "fp": 25,
+        "fn": 142,
+        "index": 69,
+        "prec": 0.7058823529411765,
+        "rec": 0.297029702970297
+    },
+    {
+        "id": "Section 397 in The Indian Penal Code",
+        "title": "Robbery, or dacoity, with attempt to cause death or grievous hurt",
+        "tp": 108,
+        "fp": 63,
+        "fn": 319,
+        "index": 70,
+        "prec": 0.631578947368421,
+        "rec": 0.2529274004683841
+    },
+    {
+        "id": "Section 406 in The Indian Penal Code",
+        "title": "Punishment for criminal breach of trust",
+        "tp": 144,
+        "fp": 54,
+        "fn": 576,
+        "index": 71,
+        "prec": 0.7272727272727273,
+        "rec": 0.2
+    },
+    {
+        "id": "Section 409 in The Indian Penal Code",
+        "title": "Criminal breach of trust by public servant, or by banker, merchant or agent",
+        "tp": 78,
+        "fp": 42,
+        "fn": 246,
+        "index": 72,
+        "prec": 0.65,
+        "rec": 0.24074074074074073
+    },
+    {
+        "id": "Section 411 in The Indian Penal Code",
+        "title": "Dishonestly receiving stolen property",
+        "tp": 30,
+        "fp": 31,
+        "fn": 174,
+        "index": 73,
+        "prec": 0.4918032786885246,
+        "rec": 0.14705882352941177
+    },
+    {
+        "id": "Section 415 in The Indian Penal Code",
+        "title": "Cheating",
+        "tp": 20,
+        "fp": 25,
+        "fn": 80,
+        "index": 74,
+        "prec": 0.4444444444444444,
+        "rec": 0.2
+    },
+    {
+        "id": "Section 417 in The Indian Penal Code",
+        "title": "Punishment for cheating",
+        "tp": 17,
+        "fp": 8,
+        "fn": 145,
+        "index": 75,
+        "prec": 0.68,
+        "rec": 0.10493827160493827
+    },
+    {
+        "id": "Section 419 in The Indian Penal Code",
+        "title": "Punishment for cheating by personation",
+        "tp": 2,
+        "fp": 3,
+        "fn": 170,
+        "index": 76,
+        "prec": 0.4,
+        "rec": 0.011627906976744186
+    },
+    {
+        "id": "Section 420 in The Indian Penal Code",
+        "title": "Cheating and dishonestly inducing delivery of property",
+        "tp": 622,
+        "fp": 295,
+        "fn": 640,
+        "index": 77,
+        "prec": 0.678298800436205,
+        "rec": 0.4928684627575277
+    },
+    {
+        "id": "Section 427 in The Indian Penal Code",
+        "title": "Mischief causing damage to the amount of fifty rupees",
+        "tp": 28,
+        "fp": 19,
+        "fn": 551,
+        "index": 78,
+        "prec": 0.5957446808510638,
+        "rec": 0.04835924006908463
+    },
+    {
+        "id": "Section 436 in The Indian Penal Code",
+        "title": "Mischief by fire or explosive substance with intent to destroy house, etc.",
+        "tp": 51,
+        "fp": 36,
+        "fn": 104,
+        "index": 79,
+        "prec": 0.5862068965517241,
+        "rec": 0.32903225806451614
+    },
+    {
+        "id": "Section 437 in The Indian Penal Code",
+        "title": "Mischief with intent to destroy or make unsafe a decked vessel or one of twenty tons burden",
+        "tp": 60,
+        "fp": 5,
+        "fn": 126,
+        "index": 80,
+        "prec": 0.9230769230769231,
+        "rec": 0.3225806451612903
+    },
+    {
+        "id": "Section 438 in The Indian Penal Code",
+        "title": "Punishment for the mischief described in section 437 commit\u00adted by fire or explosive substance",
+        "tp": 311,
+        "fp": 111,
+        "fn": 131,
+        "index": 81,
+        "prec": 0.7369668246445498,
+        "rec": 0.7036199095022625
+    },
+    {
+        "id": "Section 447 in The Indian Penal Code",
+        "title": "Punishment for criminal trespass",
+        "tp": 3,
+        "fp": 11,
+        "fn": 193,
+        "index": 82,
+        "prec": 0.21428571428571427,
+        "rec": 0.015306122448979591
+    },
+    {
+        "id": "Section 448 in The Indian Penal Code",
+        "title": "Punishment for house-trespass",
+        "tp": 7,
+        "fp": 13,
+        "fn": 325,
+        "index": 83,
+        "prec": 0.35,
+        "rec": 0.02108433734939759
+    },
+    {
+        "id": "Section 450 in The Indian Penal Code",
+        "title": "House-trespass in order to commit offence punishable with imprisonment for life",
+        "tp": 8,
+        "fp": 11,
+        "fn": 85,
+        "index": 84,
+        "prec": 0.42105263157894735,
+        "rec": 0.08602150537634409
+    },
+    {
+        "id": "Section 452 in The Indian Penal Code",
+        "title": "House-trespass after preparation for hurt, assault or wrong\u00adful restraint",
+        "tp": 56,
+        "fp": 40,
+        "fn": 430,
+        "index": 85,
+        "prec": 0.5833333333333334,
+        "rec": 0.11522633744855967
+    },
+    {
+        "id": "Section 457 in The Indian Penal Code",
+        "title": "Lurking house-trespass or house-breaking by night in order to commit offence punishable with imprisonment",
+        "tp": 18,
+        "fp": 20,
+        "fn": 99,
+        "index": 86,
+        "prec": 0.47368421052631576,
+        "rec": 0.15384615384615385
+    },
+    {
+        "id": "Section 465 in The Indian Penal Code",
+        "title": "Punishment for forgery",
+        "tp": 2,
+        "fp": 1,
+        "fn": 216,
+        "index": 87,
+        "prec": 0.6666666666666666,
+        "rec": 0.009174311926605505
+    },
+    {
+        "id": "Section 467 in The Indian Penal Code",
+        "title": "Forgery of valuable security, will, etc.",
+        "tp": 99,
+        "fp": 74,
+        "fn": 426,
+        "index": 88,
+        "prec": 0.5722543352601156,
+        "rec": 0.18857142857142858
+    },
+    {
+        "id": "Section 468 in The Indian Penal Code",
+        "title": "Forgery for purpose of cheating.",
+        "tp": 196,
+        "fp": 130,
+        "fn": 491,
+        "index": 89,
+        "prec": 0.6012269938650306,
+        "rec": 0.2852983988355167
+    },
+    {
+        "id": "Section 471 in The Indian Penal Code",
+        "title": "Using as genuine a forged document or electronic record",
+        "tp": 234,
+        "fp": 166,
+        "fn": 422,
+        "index": 90,
+        "prec": 0.585,
+        "rec": 0.3567073170731707
+    },
+    {
+        "id": "Section 482 in The Indian Penal Code",
+        "title": "Punishment for using a false property mark",
+        "tp": 97,
+        "fp": 57,
+        "fn": 323,
+        "index": 91,
+        "prec": 0.6298701298701299,
+        "rec": 0.23095238095238096
+    },
+    {
+        "id": "Section 494 in The Indian Penal Code",
+        "title": "Marrying again during lifetime of husband or wife",
+        "tp": 56,
+        "fp": 28,
+        "fn": 41,
+        "index": 92,
+        "prec": 0.6666666666666666,
+        "rec": 0.5773195876288659
+    },
+    {
+        "id": "Section 498 in The Indian Penal Code",
+        "title": "Enticing or taking away or detaining with criminal intent a married woman",
+        "tp": 24,
+        "fp": 19,
+        "fn": 172,
+        "index": 93,
+        "prec": 0.5581395348837209,
+        "rec": 0.12244897959183673
+    },
+    {
+        "id": "Section 498A in The Indian Penal Code",
+        "title": "Husband or relative of husband of a woman subjecting her to cruelty",
+        "tp": 824,
+        "fp": 292,
+        "fn": 376,
+        "index": 94,
+        "prec": 0.7383512544802867,
+        "rec": 0.6866666666666666
+    },
+    {
+        "id": "Section 500 in The Indian Penal Code",
+        "title": "Punishment for defamation",
+        "tp": 53,
+        "fp": 18,
+        "fn": 65,
+        "index": 95,
+        "prec": 0.7464788732394366,
+        "rec": 0.4491525423728814
+    },
+    {
+        "id": "Section 504 in The Indian Penal Code",
+        "title": "Intentional insult with intent to provoke breach of the peace",
+        "tp": 115,
+        "fp": 169,
+        "fn": 575,
+        "index": 96,
+        "prec": 0.40492957746478875,
+        "rec": 0.16666666666666666
+    },
+    {
+        "id": "Section 506 in The Indian Penal Code",
+        "title": "Punishment for criminal intimidation",
+        "tp": 522,
+        "fp": 357,
+        "fn": 2036,
+        "index": 97,
+        "prec": 0.5938566552901023,
+        "rec": 0.2040656763096169
+    },
+    {
+        "id": "Section 509 in The Indian Penal Code",
+        "title": "Word, gesture or act intended to insult the modesty of a woman",
+        "tp": 6,
+        "fp": 7,
+        "fn": 147,
+        "index": 98,
+        "prec": 0.46153846153846156,
+        "rec": 0.0392156862745098
+    },
+    {
+        "id": "Section 511 in The Indian Penal Code",
+        "title": "Punishment for attempting to commit offences punishable with imprisonment for life or other imprisonment",
+        "tp": 12,
+        "fp": 1,
+        "fn": 218,
+        "index": 99,
+        "prec": 0.9230769230769231,
+        "rec": 0.05217391304347826
+    }
+]

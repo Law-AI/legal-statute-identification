@@ -1,0 +1,12 @@
+{
+    "eval_c-f1": 0.3736291486291486,
+    "eval_c-prec": 0.3806445461479786,
+    "eval_c-rec": 0.3683261183261184,
+    "eval_f1": 0.2880917874396135,
+    "eval_loss": 2.2949512004852295,
+    "eval_prec": 0.3239433811802233,
+    "eval_rec": 0.2702380952380953,
+    "eval_runtime": 4.7099,
+    "eval_samples_per_second": 10.616,
+    "eval_steps_per_second": 0.425
+}

@@ -1,0 +1,9 @@
+{
+    "test_f1": 0.22540542790542792,
+    "test_loss": 5.7370381355285645,
+    "test_prec": 0.2879736842105263,
+    "test_rec": 0.20318871651224593,
+    "test_runtime": 2.166,
+    "test_samples_per_second": 23.084,
+    "test_steps_per_second": 1.847
+}

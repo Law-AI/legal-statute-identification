@@ -1,0 +1,2 @@
+Micro-Q: 0.0130, Micro-R (all): 0.0101, Micro-R (random): 0.0101 +/- 0.0005
+Macro-Q: 0.0155, Macro-R (all): 0.0100, Macro-R (random): 0.0100 +/- 0.0007
