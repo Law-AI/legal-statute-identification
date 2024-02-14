@@ -1,0 +1,122 @@
+[
+    [
+        "2",
+        "part of",
+        "Convention"
+    ],
+    [
+        "Convention",
+        "includes",
+        "2"
+    ],
+    [
+        "3",
+        "part of",
+        "Convention"
+    ],
+    [
+        "Convention",
+        "includes",
+        "3"
+    ],
+    [
+        "5",
+        "part of",
+        "Convention"
+    ],
+    [
+        "Convention",
+        "includes",
+        "5"
+    ],
+    [
+        "6",
+        "part of",
+        "Convention"
+    ],
+    [
+        "Convention",
+        "includes",
+        "6"
+    ],
+    [
+        "8",
+        "part of",
+        "Convention"
+    ],
+    [
+        "Convention",
+        "includes",
+        "8"
+    ],
+    [
+        "9",
+        "part of",
+        "Convention"
+    ],
+    [
+        "Convention",
+        "includes",
+        "9"
+    ],
+    [
+        "10",
+        "part of",
+        "Convention"
+    ],
+    [
+        "Convention",
+        "includes",
+        "10"
+    ],
+    [
+        "11",
+        "part of",
+        "Convention"
+    ],
+    [
+        "Convention",
+        "includes",
+        "11"
+    ],
+    [
+        "14",
+        "part of",
+        "Convention"
+    ],
+    [
+        "Convention",
+        "includes",
+        "14"
+    ],
+    [
+        "P1-1",
+        "part of",
+        "Protocol 4"
+    ],
+    [
+        "Protocol 4",
+        "includes",
+        "P1-1"
+    ],
+    [
+        "Convention",
+        "part of",
+        "European Convention on Human Rights"
+    ],
+    [
+        "Protocol 4",
+        "part of",
+        "European Convention on Human Rights"
+    ],
+    [
+        "European Convention on Human Rights",
+        "includes",
+        "Convention"
+    ],
+    [
+        "European Convention on Human Rights",
+        "includes",
+        "Protocol 4"
+    ]
+]

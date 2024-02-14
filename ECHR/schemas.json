@@ -1,0 +1,118 @@
+{
+    "fact": [
+        [
+            [
+                "fact",
+                "cites",
+                "article"
+            ],
+            [
+                "article",
+                "cited by",
+                "fact"
+            ]
+        ],
+        [
+            [
+                "fact",
+                "cites",
+                "article"
+            ],
+            [
+                "article",
+                "part of",
+                "protocol"
+            ],
+            [
+                "protocol",
+                "includes",
+                "article"
+            ],
+            [
+                "article",
+                "cited by",
+                "fact"
+            ]
+        ],
+        [
+            [
+                "fact",
+                "cites",
+                "article"
+            ],
+            [
+                "article",
+                "part of",
+                "protocol"
+            ],
+            [
+                "protocol",
+                "part of",
+                "head"
+            ],
+            [
+                "head",
+                "includes",
+                "protocol"
+            ],
+            [
+                "protocol",
+                "includes",
+                "article"
+            ],
+            [
+                "article",
+                "cited by",
+                "fact"
+            ]
+        ]
+    ],
+    "article": [
+        [
+            [
+                "article",
+                "cited by",
+                "fact"
+            ],
+            [
+                "fact",
+                "cites",
+                "article"
+            ]
+        ],
+        [
+            [
+                "article",
+                "part of",
+                "protocol"
+            ],
+            [
+                "protocol",
+                "includes",
+                "article"
+            ]
+        ],
+        [
+            [
+                "article",
+                "part of",
+                "protocol"
+            ],
+            [
+                "protocol",
+                "part of",
+                "head"
+            ],
+            [
+                "head",
+                "includes",
+                "protocol"
+            ],
+            [
+                "protocol",
+                "includes",
+                "article"
+            ]
+        ]
+    ]
+}
