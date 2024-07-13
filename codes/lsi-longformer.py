@@ -52,9 +52,6 @@ dataset = load_dataset('json', data_files={'train': os.path.join(root, "train2.j
 print(dataset)
 dataset = dataset.map(schema.encode_example, features=schema)
 
-dataset['train'] = dataset['train'].select([0, 1])
-dataset['dev'] = dataset['dev'].select([0, 1])
-
 config = AutoConfig.from_pretrained(model_src), #cache_dir=CACHE_DIR)
 
 tokenizer = AutoTokenizer.from_pretrained(model_src)

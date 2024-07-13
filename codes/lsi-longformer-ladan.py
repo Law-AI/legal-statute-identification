@@ -74,10 +74,6 @@ dataset = dataset.map(schema.encode_example, features=schema)
 dataset = dataset.filter(lambda example: len(example['text']) != 0)
 label_dataset = label_dataset.map(label_schema.encode_example, features=label_schema)
 
-dataset['train'] = dataset['train'].select([0])
-dataset['dev'] = dataset['dev'].select([0])
-
-
 config = AutoConfig.from_pretrained(model_src)
 tokenizer = AutoTokenizer.from_pretrained(model_src) #, cache_dir='~/HDD/LSI-Cache')
 special_tokens = {'additional_special_tokens': ['<ENTITY>', '<ACT>', '<SECTION>']}

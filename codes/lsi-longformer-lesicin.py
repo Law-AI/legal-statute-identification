@@ -708,10 +708,6 @@ if __name__ == '__main__':
     dataset = dataset.filter(lambda example: len(example['text']) != 0)
     print(type(dataset['train']))
 
-    dataset['train'] = dataset['train'].select([0])
-    dataset['dev'] = dataset['dev'].select([0])
-
-
     tokenizer = AutoTokenizer.from_pretrained(model_src)
     special_tokens = {'additional_special_tokens': ['<ENTITY>', '<ACT>', '<SECTION>']}
     tokenizer.add_special_tokens(special_tokens)

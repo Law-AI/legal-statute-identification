@@ -1,8 +1,3 @@
-#!/usr/bin/env python
-# coding: utf-8
-
-# In[30]:
-
 
 import datasets
 import torch
@@ -26,11 +21,10 @@ from tqdm import tqdm
 from sklearn.metrics import precision_score, recall_score, f1_score
 
 os.environ["TOKENIZERS_PARALLELISM"] = 'true'
-# In[17]:
 
-root = sys.argv[1]
-model_src = sys.argv[2]
-output_fol = sys.argv[3]
+root = sys.argv[1]              # Dataset directory
+model_src = sys.argv[2]         # Model name/directory
+output_fol = sys.argv[3]        # Output Folder
 
 with open(os.path.join(root, "label_vocab.json")) as fr:
     label_vocab = json.load(fr)
@@ -46,10 +40,6 @@ schema = Features(
     }
 )
 
-
-# In[19]:
-
-
 dataset = load_dataset('json', data_files={'train': os.path.join(root, "train2.json"), 
                                            'dev': os.path.join(root, "dev2.json"), 
                                            'test': os.path.join(root, "test2-expln3-noimp.json")}, 
@@ -57,42 +47,21 @@ dataset = load_dataset('json', data_files={'train': os.path.join(root, "train2.j
                        cache_dir='~/HDD/LSI-Cache')
 print(dataset)
 
-# In[20]:
-
-
 dataset = dataset.map(schema.encode_example, features=schema)
-
-
-#print(dataset['train'][0])
-
-#quit()
-# In[21]:
-
 
 tokenizer = AutoTokenizer.from_pretrained(model_src)
 special_tokens = {'additional_special_tokens': ['<ENTITY>', '<ACT>', '<SECTION>']}
 tokenizer.add_special_tokens(special_tokens)
 tokenizer.add_tokens(special_tokens['additional_special_tokens'])
 
-
-
-# In[23]:
-
-dataset['train'] = dataset['train'].select([0])
-dataset['dev'] = dataset['dev'].select([0])
-
 dataset = dataset.map(lambda example: tokenizer(list(example['text']), return_token_type_ids=False), batched=False)
-
-
-
-# In[24]:
 
 
 dataset.set_format(type='torch', columns=['input_ids', 'attention_mask', 'labels'])
 
 print(dataset['train'].features)
 
-# In[25]:
+# Generate label weights in the reverse order of their frequency
 def generate_label_weights():
     weights = torch.zeros(len(label_vocab))
     for exp in tqdm(dataset['train'], desc="Label Weights"):
@@ -107,8 +76,7 @@ else:
     label_weights = generate_label_weights().cuda()
     with open(os.path.join(root, 'label_weights.pkl'), 'wb') as fw:
         pkl.dump(label_weights, fw)
-#label_weights = None
-#print(label_weights)
+
 
 class LstmAttn(nn.Module):
     def __init__(self, hidden_size, drop=0.5):
@@ -144,7 +112,6 @@ class TextClassifierOutput(ModelOutput):
     hidden_states = None
 
 
-# In[28]:
 class HierBert(nn.Module):
     def __init__(self, encoder, drop=0.5):
         super().__init__()
@@ -190,12 +157,10 @@ class HierBert(nn.Module):
             attention_mask = attention_mask.any(dim=2)
             
         ## encode each example by aggregating Bert segment outputs
-        #print(encoder_outputs.shape)
         outputs, hidden = self.segment_encoder(inputs=encoder_outputs, attention_mask=attention_mask)
-        #outputs, hidden = encoder_outputs, None
         return outputs, hidden
 
-
+# HierBERT + classification head
 class HierBertForTextClassfication(nn.Module):
     def __init__(self, hier_encoder, num_labels, label_weights=None, drop=0.5):
         super().__init__()
@@ -224,21 +189,12 @@ class HierBertForTextClassfication(nn.Module):
         
         return TextClassifierOutput(loss=loss, logits=torch.sigmoid(logits), hidden_states=hidden) 
 
-
-# In[31]:
-
-
 bert = AutoModel.from_pretrained(model_src)
 bert.resize_token_embeddings(len(tokenizer), pad_to_multiple_of=8)
 hier_bert = HierBert(bert)
 model = HierBertForTextClassfication(hier_bert, len(label_vocab), label_weights=label_weights).cuda()
 
-
-
-
-# In[ ]:
-
-
+# Data collator
 def collate_fn(examples):
     max_segments = min(max(len(exp['input_ids']) for exp in examples), 128)
     max_segment_size = min(max(max(len(sent) for sent in exp['input_ids']) for exp in examples), 128)
@@ -256,10 +212,7 @@ def collate_fn(examples):
     
     return BatchEncoding({'input_ids': input_ids, 'attention_mask': attention_mask, 'labels': labels})
 
-
-# In[ ]:
-
-
+# Compute macro F1 scores
 def compute_metrics(p, threshold=0.5):
     metrics = {}
     preds = (p.predictions > threshold).astype(float)
@@ -269,10 +222,7 @@ def compute_metrics(p, threshold=0.5):
     metrics['f1'] = f1_score(refs, preds, average='macro', labels=list(label_vocab.values()))
     return metrics
 
-
-# In[ ]:
-
-
+# Different layers have different learning rates, here we set the learning rates for each layer
 def AdamWLLRD(model, bert_lr=1e-5, intermediate_lr=1e-3, top_lr=1e-3, wd=1e-2):
     opt_params = []
     named_params = list(model.named_parameters())
@@ -311,16 +261,8 @@ def AdamWLLRD(model, bert_lr=1e-5, intermediate_lr=1e-3, top_lr=1e-3, wd=1e-2):
 
     return AdamW(opt_params, lr=bert_lr) #, correct_bias=True)
 
-
-# In[ ]:
-
-
 opt = AdamWLLRD(model)
 sch = transformers.get_linear_schedule_with_warmup(opt, num_warmup_steps=1000, num_training_steps=15000)
-
-
-# In[ ]:
-
 
 training_args = TrainingArguments(
     output_dir=output_fol,
@@ -352,10 +294,6 @@ training_args = TrainingArguments(
     gradient_checkpointing=False,
 )
 
-
-# In[ ]:
-
-
 trainer = Trainer(
     model=model,
     args=training_args,
@@ -366,27 +304,19 @@ trainer = Trainer(
     optimizers=(opt, sch)
 )
 
-print(model)
-
-# In[ ]:
 if training_args.do_train:
     _, _, metrics = trainer.train(ignore_keys_for_eval=['hidden_states'], resume_from_checkpoint=False)
-    #torch.save(model.state_dict(), os.path.join(root, output_fol, "pytorch_model.bin"))
     trainer.save_model()
     trainer.save_metrics('train', metrics)
 if training_args.do_eval:
-    #dev_results = trainer.evaluate(ignore_keys=['hidden_states'])
     model.load_state_dict(torch.load(os.path.join(output_fol, "pytorch_model.bin"), map_location='cuda'), strict=False)
     test_results = trainer.evaluate(eval_dataset=dataset['test'], ignore_keys=['hidden_states'])
-    #print(dev_results)
     print(test_results)
-    # trainer.save_metrics('test', test_results)
-    #with open(os.path.join(root, output_fol, "eval_results.json"), 'w') as fw:
-    #json.dump(test_results, fw, indent=4)
+    trainer.save_metrics('test', test_results)
 if training_args.do_predict:
     model.load_state_dict(torch.load(os.path.join(output_fol, "pytorch_model.bin"), map_location='cuda'), strict=False)
     predictions, label_ids, results = trainer.predict(test_dataset=dataset['test'], ignore_keys=['hidden_states'])
-    np.save(os.path.join(output_fol, "predictions_expln3_noimp.npy"), predictions)
-    np.save(os.path.join(output_fol, "label_ids_expln3_noimp.npy"), label_ids)
-    trainer.save_metrics('test2_expln3_noimp', results)
+    np.save(os.path.join(output_fol, "predictions.npy"), predictions)
+    np.save(os.path.join(output_fol, "label_ids.npy"), label_ids)
+    trainer.save_metrics('test', results)
     print(results)
