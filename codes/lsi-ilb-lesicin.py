@@ -1,8 +1,3 @@
-#!/usr/bin/env python
-# coding: utf-8
-
-# In[30]:
-
 
 import datasets
 import torch
@@ -34,7 +29,6 @@ from sklearn.metrics import precision_score, recall_score, f1_score
 from typing import Dict, List
 from safetensors.torch import load_model
 from safetensors import safe_open
-
 
 
 def generate_graph(label_vocab, type_map, label_tree_edges, cit_net_edges, label_name='section'):
@@ -75,14 +69,6 @@ def generate_graph(label_vocab, type_map, label_tree_edges, cit_net_edges, label
 
     return node_vocab, edge_vocab, edge_indices, adjacency
 
-
-
-
-# In[25]:
-
-#label_weights = None
-#print(label_weights)
-
 class LstmAttn(nn.Module):
     def __init__(self, hidden_size, drop=0.5):
         super().__init__()
@@ -113,9 +99,6 @@ class LstmAttn(nn.Module):
         
         hidden = torch.sum(outputs * masked_scores.unsqueeze(2), dim=1)
         return outputs, hidden
-
-
-# In[26]:
 
 
 class HierBert(nn.Module):
@@ -165,7 +148,6 @@ class HierBert(nn.Module):
             
         ## encode each example by aggregating Bert segment outputs
         outputs, hidden = self.segment_encoder(inputs=encoder_outputs, attention_mask=attention_mask, dynamic_context=dynamic_context)
-        #outputs, hidden = encoder_outputs, None
         return outputs, hidden
 
 class MetapathAggrNet(torch.nn.Module):
@@ -263,8 +245,6 @@ class MatchNet(torch.nn.Module):
     def __init__(self, hidden_size, num_labels, drop=0.1):
         super().__init__()
         
-        # self.match_lstm = LstmNet(hidden_size)
-        # self.match_attn = AttnNet(hidden_size, drop=drop)
         self.matcher = LstmAttn(hidden_size, drop=drop)
         self.match_fc = torch.nn.Linear(2 * hidden_size, num_labels)
         
@@ -273,16 +253,11 @@ class MatchNet(torch.nn.Module):
     def forward(self, fact_inputs, sec_inputs, context=None): # [D, H], [C, H]
         sec_inputs = sec_inputs.expand(fact_inputs.size(0), sec_inputs.size(0), sec_inputs.size(1)) # [D, C, H]
         
-        # sec_hidden_all = self.match_lstm(sec_inputs) # [D, C, H]
-        # sec_hidden = self.match_attn(sec_hidden_all, dynamic_context=context) # [D, H]
         sec_hidden = self.matcher(sec_inputs, dynamic_context=context)[1]
         
         logits = self.dropout(self.match_fc(torch.cat([fact_inputs, sec_hidden], dim=1))) # [D, C]
         scores = torch.sigmoid(logits).detach() # [D, C]
         return logits, scores
-
-
-# In[27]:
 
 @dataclass
 class TextClassifierOutput(ModelOutput):
@@ -290,37 +265,7 @@ class TextClassifierOutput(ModelOutput):
     logits:torch.Tensor = None
     hidden_states:torch.Tensor = None
 
-
-# In[28]:
-
-# class HierBertForTextClassfication(nn.Module):
-#     def __init__(self, hier_encoder, num_labels, label_weights=None, drop=0.5):
-#         super().__init__()
-        
-#         self.hidden_size = hier_encoder.hidden_size
-#         self.num_labels = num_labels
-#         self.hier_encoder = hier_encoder
-#         self.classifier_fc = nn.Linear(hier_encoder.hidden_size, num_labels)
-        
-#         if label_weights is None:
-#             label_weights = torch.ones(num_labels)
-#         self.loss_fct = nn.BCEWithLogitsLoss(label_weights)
-        
-#         self.dropout = nn.Dropout(drop)
-    
-#     def gradient_checkpointing_enable(self):
-#         self.hier_encoder.gradient_checkpointing_enable()
-
-#     def forward(self, input_ids=None, attention_mask=None, encoder_outputs=None, labels=None):
-#         hidden = self.dropout(self.hier_encoder(input_ids=input_ids, attention_mask=attention_mask, encoder_outputs=encoder_outputs)[1])
-#         logits = self.dropout(self.classifier_fc(hidden))
-        
-#         loss = None
-#         if labels is not None:
-#             loss = self.loss_fct(logits, labels)
-        
-#         return TextClassifierOutput(loss=loss, logits=torch.sigmoid(logits), hidden_states=hidden)
-
+# Complete LeSICiN model
 class LeSICiNBertForTextClassification(torch.nn.Module):
     def __init__(
         self, 
@@ -338,10 +283,6 @@ class LeSICiNBertForTextClassification(torch.nn.Module):
         
         super().__init__()
         
-        # self.text_encoder = HierAttnNet(hidden_size, vocab_size=vocab_size)
-        # self.graph_encoder = MetapathAggrNet(node_vocab_size, edge_vocab_size, hidden_size)
-        # self.match_network = MatchNet(hidden_size, num_labels)
-
         self.text_encoder = text_encoder
         self.graph_encoder = graph_encoder
         self.match_network = match_network
@@ -367,7 +308,6 @@ class LeSICiNBertForTextClassification(torch.nn.Module):
                 loss += self.thetas[i] * self.criterion(logits, labels)
         return loss
         
-    # def forward(self, fact_batch, sec_batch, pthresh=None): # We have D documents in fact_batch and C sections in sec_batch
     def forward(
         self,
         ids=None,
@@ -382,23 +322,9 @@ class LeSICiNBertForTextClassification(torch.nn.Module):
         sec_node_input_ids = None,
         sec_edge_input_ids = None
     ):
-        # if pthresh is not None:
-        #     self.pred_threshold = pthresh        
-        
-        # Encode fact text using HAN
-        # if not fact_batch.sent_vectorized:
-        #     fact_attr_hidden = self.text_encoder(tokens=fact_batch.tokens, mask=fact_batch.mask) # [D, H] 
-        # else:
-        #     fact_attr_hidden = self.text_encoder(doc_inputs=fact_batch.doc_inputs, mask=fact_batch.mask) # [D, H]
 
         fact_attr_hidden = self.text_encoder(input_ids=input_ids, attention_mask=attention_mask)[1]
         
-        # Encode sec text using HAN
-        # if not sec_batch.sent_vectorized:
-        #     sec_attr_hidden = self.text_encoder(tokens=sec_batch.tokens, mask=sec_batch.mask) # [C, H]
-        # else:
-        #     sec_attr_hidden = self.text_encoder(doc_inputs=sec_batch.doc_inputs, mask=sec_batch.mask) # [C, H]
-
         sec_attr_hidden = self.text_encoder(input_ids=sec_input_ids, attention_mask=sec_attention_mask)[1]
         
         # context vector for matching with fact attributes
@@ -436,23 +362,15 @@ class LeSICiNBertForTextClassification(torch.nn.Module):
         
         # Combine scores and losses    
         scores = (self.lambdas[0] * attr_scores + self.lambdas[-1] * align_scores)
-        # predictions = (scores > self.pred_threshold).float()
         
-        # if fact_batch.annotated:
         loss = self.calculate_losses([attr_logits, struct_logits, align_logits], labels)
-        # else:
-        #     loss = None
-            
-        # return loss, predictions
+        
         return TextClassifierOutput(loss=loss, logits=scores)
 
 
 def generate_text_tensors(dataset, tokenizer):
     example_ids = []
     
-    # for exp in sec_dataset:
-    #     print(exp)
-    # print()
     max_segments = min(max(len(exp['input_ids']) for exp in dataset), 96)
     max_segment_size = min(max(max(len(sent) for sent in exp['input_ids']) for exp in dataset), 128)
     # max_segments, max_segment_size = 128, 128
@@ -468,8 +386,6 @@ def generate_text_tensors(dataset, tokenizer):
     attention_mask = input_ids != tokenizer.pad_token_id
     return example_ids, input_ids, attention_mask
    
-
-
 
 def generate_metapaths(indices, schemas, adjacency, edge_vocab, num_samples=8): # [D,]
     indices = indices.repeat(num_samples) # [M*D,]
@@ -497,14 +413,11 @@ def generate_metapaths(indices, schemas, adjacency, edge_vocab, num_samples=8): 
     
     return tokens, edge_tokens
 
-# In[31]:
+
 def collate_sections(sec_dataset, tokenizer, schemas=None, adjacency=None, type_map=None, node_vocab=None, edge_vocab=None):
     
     example_ids = []
     
-    # for exp in sec_dataset:
-    #     print(exp)
-    # print()
     max_segments = min(max(len(exp['input_ids']) for exp in sec_dataset), 128)
     max_segment_size = min(max(max(len(sent) for sent in exp['input_ids']) for exp in sec_dataset), 128)
     # max_segments, max_segment_size = 128, 128
@@ -536,9 +449,6 @@ def collate_sections(sec_dataset, tokenizer, schemas=None, adjacency=None, type_
     )
 
 
-
-# In[ ]:
-
 @dataclass
 class DataCollatorForLSIGraph(DataCollatorMixin):
     tokenizer: PreTrainedTokenizerBase
@@ -557,18 +467,10 @@ class DataCollatorForLSIGraph(DataCollatorMixin):
 
     def torch_call(self, examples):
         ids, input_ids, attention_mask = generate_text_tensors(examples, self.tokenizer)
-        # sec_ids, sec_input_ids, sec_attention_mask = generate_text_tensors(self.sec_data, self.tokenizer)
-
-#        max_segments = min(max(len(exp['input_ids']) for exp in examples), 128)
-#        max_segment_size = min(max(max(len(sent) for sent in exp['input_ids']) for exp in examples), 128)
         
-#        input_ids = torch.zeros(len(examples), max_segments, max_segment_size, dtype=torch.long).fill_(self.tokenizer.pad_token_id)
         labels = torch.zeros(len(examples), len(self.label_vocab))        
         for exp_idx, exp in enumerate(examples):
             labels[exp_idx].scatter_(0, exp['labels'], 1.)
-            
-
-
 
         node_input_ids, edge_input_ids = None, None
 
@@ -595,10 +497,7 @@ class DataCollatorForLSIGraph(DataCollatorMixin):
             }
         )
 
-
-# In[ ]:
-
-
+# Compute macro F1 scores
 def compute_metrics(p, threshold=0.75):
     metrics = {}
     preds = (p.predictions > threshold).astype(float)
@@ -606,13 +505,9 @@ def compute_metrics(p, threshold=0.75):
     metrics['prec'] = precision_score(refs, preds, average='macro', labels=list(label_vocab.values()))
     metrics['rec'] = recall_score(refs, preds, average='macro', labels=list(label_vocab.values()))
     metrics['f1'] = f1_score(refs, preds, average='macro', labels=list(label_vocab.values()))
-    #print(metrics['prec'], metrics['rec'], metrics['f1'])
-    #return {'metrics': metrics, 'predictions': p.predictions, 'references': refs}
     return metrics
 
-# In[ ]:
-
-
+# Different layers have different learning rates, here we set the learning rates for each layer
 def AdamWLLRD(model, bert_lr=3e-5, intermediate_lr=1e-3, top_lr=1e-4, wd=1e-2):
     opt_params = []
     named_params = list(model.named_parameters())
@@ -747,14 +642,12 @@ class LSIGraphTrainer(Trainer):
 
 
 
-# In[ ]:
 if __name__ == '__main__':
     os.environ["TOKENIZERS_PARALLELISM"] = 'true'
-    # In[17]:
-
-    root = sys.argv[1]
-    model_src = sys.argv[2]
-    output_fol = sys.argv[3]
+    
+    root = sys.argv[1]              # Dataset directory
+    model_src = sys.argv[2]         # Model name/directory
+    output_fol = sys.argv[3]        # Output Folder
 
     with open(os.path.join(root, "label_vocab.json")) as fr:
         label_vocab = json.load(fr)
@@ -777,10 +670,6 @@ if __name__ == '__main__':
         }
     )
 
-
-    # In[19]:
-
-
     dataset = load_dataset(
         'json', 
         data_files={'train': os.path.join(root, "train2.json"), 
@@ -798,31 +687,14 @@ if __name__ == '__main__':
     )
     print(sec_dataset)
 
-
-    # In[20]:
-
-
     dataset = dataset.map(schema.encode_example, features=schema)
     sec_dataset = sec_dataset.map(sec_schema.encode_example, features=sec_schema)
     print(type(dataset['train']))
 
-    #print(dataset['train'][0])
-
-    #quit()
-    # In[21]:
-
-
     tokenizer = AutoTokenizer.from_pretrained(model_src, cache_dir='Cache')
-
-
-    # In[23]:
-    dataset['train'] = dataset['train'].select([0])
-    dataset['dev'] = dataset['dev'].select([0])
 
     dataset = dataset.map(lambda example: tokenizer(list(example['text']), return_token_type_ids=False), batched=False)
     sec_dataset = sec_dataset.map(lambda example: tokenizer(list(example['text']), return_token_type_ids=False), batched=False)
-
-
 
     if not os.path.exists(os.path.join(root, "label_weights_custom.pkl")):
         label_weights = torch.zeros(len(label_vocab))
@@ -836,14 +708,9 @@ if __name__ == '__main__':
         with open(os.path.join(root, "label_weights_custom.pkl"), 'rb') as fr:
             label_weights = pkl.load(fr)
 
-
-    # In[24]:
-
-
     dataset.set_format(type='torch', columns=['input_ids', 'attention_mask', 'labels'], output_all_columns=True)
     sec_dataset.set_format(type='torch', columns=['input_ids', 'attention_mask'], output_all_columns=True)
-
-    # print(dataset['train'].features)
+    
 
     with open(os.path.join(root, "type_map.json")) as fr:
         type_map = json.load(fr)
@@ -885,26 +752,9 @@ if __name__ == '__main__':
         for k in fr.keys():
             tensors[k] = fr.get_tensor(k)
     model.load_state_dict(tensors)
-    
-    # model = LeSICiNBertForTextClassification(
-    #     text_encoder,
-    #     graph_encoder,
-    #     match_network,
-    #     768,
-    #     label_weights=label_weights,
-    #     schemas=schemas['fact'],
-    #     sec_schemas=schemas['section'],
-    # ).from_pretrained(os.path.join(root, output_fol), use_safetensors=True)
-    
-
-    # model = HierBertForTextClassfication(hier_bert, len(label_vocab), label_weights=label_weights).cuda()
-    
-    #model.load_state_dict(torch.load(os.path.join(root, output_fol, "pytorch_model.bin"), map_location='cuda'))
 
     opt = AdamWLLRD(model)
     sch = transformers.get_constant_schedule_with_warmup(opt, num_warmup_steps=1000)
-    
-    #sec_batch = collate_sections(sec_dataset['main'], tokenizer, schemas['section'], adjacency, type_map, node_vocab, edge_vocab)
 
     training_args = TrainingArguments(
         output_dir=output_fol,
@@ -936,11 +786,8 @@ if __name__ == '__main__':
         gradient_checkpointing=False,
     )
 
-
-    # In[ ]:
     sec_ids, sec_input_ids, sec_attention_mask = generate_text_tensors(sec_dataset['main'], tokenizer)
     
-
     trainer = LSIGraphTrainer(
         model=model,
         tokenizer=tokenizer,
@@ -960,34 +807,17 @@ if __name__ == '__main__':
         edge_vocab=edge_vocab
     )
 
-    #print(model)
-
-
-    # In[ ]:
     if training_args.do_train:
         _, _, metrics = trainer.train(ignore_keys_for_eval=['hidden_states'], resume_from_checkpoint=False)
-        #torch.save(model.state_dict(), os.path.join(root, output_fol, "pytorch_model.bin"))
         trainer.save_model()
         trainer.save_metrics('train', metrics)
     if training_args.do_eval:
-        #dev_results = trainer.evaluate(ignore_keys=['hidden_states'])
         test_results = trainer.evaluate(eval_dataset=dataset['test'], ignore_keys=['hidden_states'])
-        #print(dev_results)
-        #print(type(test_results))
-        #print(test_results['eval_metrics'])
         print(test_results)
-        # trainer.save_metrics('test2_expln2_imp', test_results) #['eval_metrics'])
-        #with open(os.path.join(root, output_fol, "predictions.pkl"), 'wb') as fw:
-            #pkl.dump({'predictions': test_results['eval_predictions'], 'references': test_results['eval_references']}, fw)
-
-        #with open(os.path.join(root, output_fol, "eval_results.json"), 'w') as fw:
-            #json.dump(test_results, fw, indent=4)
+        trainer.save_metrics('test', test_results) #['eval_metrics'])
     if training_args.do_predict:
-        # model.load_state_dict(torch.load(os.path.join(root, output_fol, "pytorch_model.bin"), map_location='cuda'))
-        # load_model(model, os.path.join(root, output_fol, "model.safetensors"))
-
         predictions, label_ids, results = trainer.predict(test_dataset=dataset['test'], ignore_keys=['hidden_states'])
-        np.save(os.path.join(output_fol, "predictions_expln3_noimp.npy"), predictions)
-        np.save(os.path.join(output_fol, "label_ids_expln3_noimp.npy"), label_ids)
-        trainer.save_metrics('test2_expln3_noimp', results)
+        np.save(os.path.join(output_fol, "predictions.npy"), predictions)
+        np.save(os.path.join(output_fol, "label_ids.npy"), label_ids)
+        trainer.save_metrics('test', results)
         print(results)
