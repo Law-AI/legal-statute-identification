@@ -1,4 +1,4 @@
-# %%
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -12,7 +12,7 @@ import transformers
 from datasets import Features, Sequence, load_dataset
 from datasets.features import ClassLabel, Value
 from stas.model_fast import *
-#from hibert_model import *
+
 from transformers import AutoConfig, AutoTokenizer, AutoModel
 from transformers import BatchEncoding, TrainingArguments, Trainer, AdamW
 from transformers.file_utils import ModelOutput
@@ -25,15 +25,11 @@ from torch_geometric.utils import degree
 
 DEVICE = 'cuda'
 
-# torch.autograd.set_detect_anomaly(True)
-
-# %%
 os.environ["TOKENIZERS_PARALLELISM"] = 'true'
-# In[17]:
 
-root = sys.argv[1]
-model_src = sys.argv[2]
-output_fol = sys.argv[3]
+root = sys.argv[1]              # Dataset directory
+model_src = sys.argv[2]         # Model name/directory
+output_fol = sys.argv[3]        # Output Folder
 
 with open(os.path.join(root, "label_vocab.json")) as fr:
     label_vocab = json.load(fr)
@@ -64,33 +60,25 @@ label_schema = Features(
     }
 )
 
-# %%
 dataset = load_dataset('json', data_files={'train': os.path.join(root, "train2.json"), 
                                            'dev': os.path.join(root, "dev2.json"), 
                                            'test': os.path.join(root, "test2.json")}, field='data', cache_dir='~/HDD/LSI-Cache')
 label_dataset = load_dataset('json', data_files={'label': os.path.join(root, "label_descriptions.json")}, field='data', cache_dir='~/HDD/LSI-Cache')
 
 
-# %%
 dataset = dataset.map(schema.encode_example, features=schema)
 dataset = dataset.filter(lambda example: len(example['text']) != 0)
 label_dataset = label_dataset.map(label_schema.encode_example, features=label_schema)
 
-dataset['train'] = dataset['train'].select([0])
-dataset['dev'] = dataset['dev'].select([0])
-
-
-# %%
 config = AutoConfig.from_pretrained(model_src)
 tokenizer = AutoTokenizer.from_pretrained(model_src) #, cache_dir='~/HDD/LSI-Cache')
 dataset = dataset.map(lambda example: tokenizer(list(example['text']), return_token_type_ids=False), batched=False)
 label_dataset = label_dataset.map(lambda example: tokenizer([example['title'] + ": "] + list(example['text']), return_token_type_ids=False), batched=False)
 
-# %%
 dataset.set_format(type='torch', columns=['input_ids', 'attention_mask', 'labels'])
 label_dataset.set_format(type='torch', columns=['input_ids', 'attention_mask'])
 
-# %%
+# Generate community weights in the reverse order of their frequency
 def generate_community_weights():
     weights = torch.zeros(num_communities)
     for exp in tqdm(dataset['train'], desc="Label Weights"):
@@ -108,7 +96,7 @@ else:
     with open(os.path.join(root, 'community_weights.pkl'), 'wb') as fw:
         pkl.dump(community_weights, fw)
 
-# %%
+# Generate label weights in the reverse order of their frequency
 def generate_label_weights():
     weights = torch.zeros(len(label_vocab))
     for exp in tqdm(dataset['train'], desc="Label Weights"):
@@ -132,7 +120,7 @@ with open(os.path.join(root, 'ladan_edges.json')) as fr:
     edges = json.load(fr)
 edges = torch.tensor(edges).permute(1, 0) #.to(DEVICE) # [2, num edges]
 
-# %%
+# Data collator
 def collate_fn(examples):
     haslabels = True if 'labels' in examples[0] else False
     
@@ -157,12 +145,11 @@ def collate_fn(examples):
     
     
     if haslabels:
-        # print(input_ids.shape, attention_mask.shape, label_batch.input_ids.shape, label_batch.attention_mask.shape, community2label.shape, edges.shape, labels.shape, community_labels.shape)
         return BatchEncoding({'input_ids': input_ids, 'attention_mask': attention_mask, 'label_input_ids': label_batch.input_ids, 'label_attention_mask': label_batch.attention_mask, 'community2label': community2label, 'edges': edges, 'labels': labels, 'community_labels': community_labels})
     else:
         return BatchEncoding({'input_ids': input_ids, 'attention_mask': attention_mask})
 
-# %%
+
 print("Encoding labels ...", end= ' ')
 label_loader = torch.utils.data.DataLoader(label_dataset['label'], batch_size=len(label_vocab), collate_fn=collate_fn)
 for label_batch in label_loader:
@@ -186,9 +173,6 @@ class LstmAttn(nn.Module):
         
         
         lengths = attention_mask.float().sum(dim=1)
-        # inputs_packed = pack_padded_sequence(inputs, torch.clamp(lengths, min=1).cpu(), enforce_sorted=False, batch_first=True)  
-        # outputs_packed = self.lstm(inputs_packed)[0]
-        # outputs = pad_packed_sequence(outputs_packed, batch_first=True)[0]
         
         outputs = self.lstm(inputs)[0]  
         
@@ -196,8 +180,6 @@ class LstmAttn(nn.Module):
         context = dynamic_context if dynamic_context is not None else self.context
         context = context.expand(inputs.size(0), self.hidden_size)
         scores = torch.bmm(activated_outputs, context.unsqueeze(2)).squeeze(2)
-        
-        # print(inputs.shape, outputs.shape, attention_mask.shape, scores.shape)
         
         masked_scores = scores.masked_fill(~attention_mask, -1e-32)
         masked_scores = F.softmax(masked_scores, dim=1)
@@ -246,9 +228,7 @@ class HierBert(nn.Module):
             attention_mask = attention_mask.any(dim=2)
             
         ## encode each example by aggregating Bert segment outputs
-        #print(encoder_outputs.shape)
         outputs, hidden = self.segment_encoder(inputs=encoder_outputs, attention_mask=attention_mask)
-        #outputs, hidden = encoder_outputs, None
         return outputs, hidden
 
 class GraphDistillationLayer(MessagePassing):
@@ -341,8 +321,6 @@ class LADANForTextClassification(nn.Module):
                 community_labels=None, # [batch size, num comm labels]
                 labels=None): # [batch size, num labels]
         
-        # print("Model:", community_labels.shape)
-        # print("Count", self.counter)
         self.counter += 1
         
         torch.cuda.empty_cache()
@@ -351,27 +329,17 @@ class LADANForTextClassification(nn.Module):
         community_logits = self.dropout(self.community_fc(input_basic_states)) # [batch size, num comm labels]
         community_preds = (torch.sigmoid(community_logits) > 0.5).float() # [batch size, num comm labels]
         
-        # print("Model:", community_logits.shape, community_labels.shape)
-        
         input_final_states = input_basic_states.clone()
         
         try:
             label_hidden_states = self.hier_encoder(input_ids=label_input_ids, attention_mask=label_attention_mask, segment_size=None)[1] # [num labels, hidden dim]
             label_distinguish_states = self.graph_distillation(label_hidden_states, edges) # [num labels, hidden dim]        
-            # print('ShittyCode')
-            # print(label_hidden_states, label_distinguish_states)
                 
             for comm_idx in range(community_preds.size(1)):
                 community_flag = community_labels[:, comm_idx] if self.training else community_preds[:, comm_idx] # [batch size,]
                 if community_flag.sum() == 0:
                     continue
                 label_flag = community2label[comm_idx, :] # [num labels,]
-                
-                # valid --> no. of labels in current comm
-                # valid_label_hidden_states = self.hier_encoder(input_ids=label_input_ids[label_flag.bool(), :, :], attention_mask=label_attention_mask[label_flag.bool(), :, :], segment_size=None)[1] # [num valid labels, hidden dim]
-                # valid_label_distinguish_states = self.graph_distillation(valid_label_hidden_states, edges) # [num valid labels, hidden dim]
-                
-                
                 
                 valid_label_distinguish_states = label_distinguish_states[label_flag.bool(), :] # [num valid labels, hidden dim]
                 
@@ -393,23 +361,17 @@ class LADANForTextClassification(nn.Module):
         community_loss = self.community_loss_fct(community_logits, community_labels)
         non_community_loss = self.loss_fct(logits, labels)
         loss = self.community_loss_factor * community_loss + non_community_loss
-        # print('Loss')
-        # print(loss)
-        # print(loss, community_loss, non_community_loss)
-        # print(logits, labels)
         
         return LADANForTextClassificationOutput(loss=loss, preds=preds, community_preds=community_preds)
     
 
-# %%
-# hier_bert = StasModel.from_pretrained(model_src, cache_dir='~/HDD/LSI-Cache')
 bert = AutoModel.from_pretrained(model_src) #, cache_dir='~/HDD/LSI-Cache')
 hier_bert = HierBert(bert)
 hier_bert.gradient_checkpointing_enable()
 graph_distillation = GraphDistillationNetwork(2, 768)
 model = LADANForTextClassification(hier_bert, graph_distillation, num_communities, len(label_vocab), community_weights, label_weights).to(DEVICE)
 
-# %%
+# Compute macro F1 scores
 def compute_metrics(p, threshold=0.5):
     metrics = {}
     
@@ -429,7 +391,7 @@ def compute_metrics(p, threshold=0.5):
     metrics['c-f1'] = f1_score(community_refs, community_preds, average='macro', labels=list(range(len(community2label))))
     return metrics
 
-# %%
+# Different layers have different learning rates, here we set the learning rates for each layer
 def AdamWLLRD(model, bert_lr=3e-5, intermediate_lr=5e-5, top_lr=1e-3, wd=1e-2):
     opt_params = []
     named_params = list(model.named_parameters())
@@ -508,30 +470,25 @@ trainer = Trainer(
     model=model,
     args=training_args,
     data_collator=collate_fn,
-    train_dataset=dataset['train'], #.select(list(range(1000))),
-    eval_dataset=dataset['dev'], #.select(list(range(200))),
+    train_dataset=dataset['train'],
+    eval_dataset=dataset['dev'],
     compute_metrics=compute_metrics,
     optimizers=(opt, sch)
 )
 
 if training_args.do_train:
     _, _, metrics = trainer.train(resume_from_checkpoint=False)
-    #torch.save(model.state_dict(), os.path.join(root, output_fol, "pytorch_model.bin"))
     trainer.save_model()
     trainer.save_metrics('train', metrics)
     
 if training_args.do_eval:
-    #dev_results = trainer.evaluate(ignore_keys=['hidden_states'])
     test_results = trainer.evaluate(eval_dataset=dataset['test'])
-    #print(dev_results)
     print(test_results)
     trainer.save_metrics('test', test_results)
-    #with open(os.path.join(root, output_fol, "eval_results.json"), 'w') as fw:
-    #json.dump(test_results, fw, indent=4)
     
 if training_args.do_predict:
-    # model.load_state_dict(torch.load(os.path.join(output_fol, "pytorch_model.bin"), map_location=DEVICE))
     predictions, label_ids, results = trainer.predict(test_dataset=dataset['test'])
     np.save(os.path.join(output_fol, "predictions.npy"), predictions)
     np.save(os.path.join(output_fol, "label_ids.npy"), label_ids)
     print(results)
+    
