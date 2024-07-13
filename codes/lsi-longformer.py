@@ -46,7 +46,7 @@ schema = Features(
 
 dataset = load_dataset('json', data_files={'train': os.path.join(root, "train2.json"), 
                                            'dev': os.path.join(root, "dev2.json"), 
-                                           'test': os.path.join(root, "test2-expln3-noimp.json")}, 
+                                           'test': os.path.join(root, "test2.json")}, 
                        field='data', 
                        cache_dir=CACHE_DIR)
 print(dataset)
@@ -80,6 +80,7 @@ dataset.set_format(type='torch', columns=['input_ids', 'attention_mask', 'labels
 
 print(dataset['train'].features)
 
+# Generate label weights in the reverse order of their frequency
 def generate_label_weights():
     weights = torch.zeros(len(label_vocab))
     for exp in tqdm(dataset['train'], desc="Label Weights"):
@@ -94,8 +95,7 @@ else:
     label_weights = generate_label_weights().cuda()
     with open(os.path.join(root, 'label_weights.pkl'), 'wb') as fw:
         pkl.dump(label_weights, fw)
-# label_weights = None
-# print(label_weights)
+
 label_weights = generate_label_weights()
 
 class TextClassifierOutput(ModelOutput):
@@ -103,7 +103,7 @@ class TextClassifierOutput(ModelOutput):
     logits = None
     hidden_states = None
 
-
+# Longformer encoder + classification head on top of [CLS] token
 class LongformerForTextClassification(nn.Module):
     def __init__(self, encoder, num_labels, label_weights=None, drop=0.5):
         super().__init__()
@@ -114,7 +114,7 @@ class LongformerForTextClassification(nn.Module):
         self.classifier_fc = nn.Linear(encoder.config.hidden_size, num_labels)
         
         if label_weights is None:
-            label_weights = torch.ones(num_labels)
+            label_weights = torch.ones(num_labels)  # For the rare labels
         self.loss_fct = nn.BCEWithLogitsLoss(label_weights)
         
         self.dropout = nn.Dropout(drop)
@@ -145,14 +145,12 @@ model = LongformerForTextClassification(longformer,
                                         len(label_vocab), 
                                         label_weights=label_weights).cuda()
 
-
+# Creates the tensors to feed to the model, i.e. the data collator
 def collate_fn(examples):
-    # max_segments = min(max(len(exp['input_ids']) for exp in examples), 128)    
     input_ids = torch.zeros(len(examples), max_seq_len, dtype=torch.long).fill_(tokenizer.pad_token_id)
     labels = torch.zeros(len(examples), len(label_vocab))
     
     for exp_idx, exp in enumerate(examples):
-        # print(exp['input_ids'])
         if len(exp['input_ids']) > 1:
             exp_text = torch.cat([s[1:-1] for s in exp['input_ids']], dim=0)[:max_seq_len-2]
         else: 
@@ -173,7 +171,7 @@ def collate_fn(examples):
                           'global_attention_mask': global_attention_mask})
 
 
-
+# Computes macro F1 score as reported in the paper
 def compute_metrics(p, threshold=0.5):
     metrics = {}
     preds = (p.predictions > threshold).astype(float)
@@ -184,7 +182,7 @@ def compute_metrics(p, threshold=0.5):
     return metrics
 
 
-
+# Different layers have different learning rates, here we set the learning rates for each layer
 def AdamWLLRD(model, bert_lr=1e-4, intermediate_lr=1e-3, top_lr=1e-3, wd=1e-2):
     opt_params = []
     named_params = list(model.named_parameters())
@@ -233,7 +231,7 @@ sch = transformers.get_linear_schedule_with_warmup(opt,
 training_args = TrainingArguments(
     output_dir=output_fol,
     overwrite_output_dir=False,
-    do_train=False,
+    do_train=True,
     do_eval=False,
     do_predict=True,
     evaluation_strategy='epoch',
@@ -272,24 +270,17 @@ trainer = Trainer(
 )
 
 
-if training_args.do_train:
+if training_args.do_train:  
     _, _, metrics = trainer.train(ignore_keys_for_eval=['hidden_states'], resume_from_checkpoint=True)
-    #torch.save(model.state_dict(), os.path.join(root, output_fol, "pytorch_model.bin"))
     trainer.save_model()
     trainer.save_metrics('train', metrics)
 if training_args.do_eval:
-    #dev_results = trainer.evaluate(ignore_keys=['hidden_states'])
     model.load_state_dict(torch.load(os.path.join(output_fol, "pytorch_model.bin"), map_location='cuda'))
     test_results = trainer.evaluate(eval_dataset=dataset['test'], ignore_keys=['hidden_states'])
-    #print(dev_results)
     print(test_results)
-    # trainer.save_metrics('test_expln_noimp', test_results)
-    # with open(os.path.join(root, output_fol, "eval_results.json"), 'w') as fw:
-    # json.dump(test_results, fw, indent=4)
 if training_args.do_predict:
-    # model.load_state_dict(torch.load(os.path.join(root, output_fol, "pytorch_model.bin"), map_location='cuda'))
     predictions, label_ids, results = trainer.predict(test_dataset=dataset['test'], ignore_keys=['hidden_states'])
-    np.save(os.path.join(output_fol, "predictions_expln3_noimp.npy"), predictions)
-    np.save(os.path.join(output_fol, "label_ids_expln3_noimp.npy"), label_ids)
-    trainer.save_metrics('test2_expln3_noimp', results)
+    np.save(os.path.join(output_fol, "predictions.npy"), predictions)
+    np.save(os.path.join(output_fol, "label_ids.npy"), label_ids)
+    trainer.save_metrics('test', results)
     print(results)

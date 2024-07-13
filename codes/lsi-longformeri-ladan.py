@@ -1,4 +1,4 @@
-# %%
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -12,7 +12,7 @@ import transformers
 from datasets import Features, Sequence, load_dataset
 from datasets.features import ClassLabel, Value
 from stas.model_fast import *
-#from hibert_model import *
+
 from transformers import AutoConfig, AutoTokenizer, AutoModel
 from transformers import BatchEncoding, TrainingArguments, Trainer, AdamW
 from transformers.file_utils import ModelOutput
@@ -23,23 +23,19 @@ from sklearn.metrics import precision_score, recall_score, f1_score
 from torch_geometric.nn import MessagePassing
 from torch_geometric.utils import degree
 
-
-
 DEVICE = 'cuda'
 
-# torch.autograd.set_detect_anomaly(True)
-
-# %%
 os.environ["TOKENIZERS_PARALLELISM"] = 'true'
-# In[17]:
 
-root = sys.argv[1]
-model_src = sys.argv[2]
-output_fol = sys.argv[3]
+root = sys.argv[1]              # Dataset directory
+model_src = sys.argv[2]         # Model name/directory
+output_fol = sys.argv[3]        # Output Folder
 
+# Load the label vocab which should be present in the root folder
 with open(os.path.join(root, "label_vocab.json")) as fr:
     label_vocab = json.load(fr)
 
+# Load the label to community mapping created using tfidf
 with open(os.path.join(root, "label2community_tfidf.json")) as fr:
     label2community = json.load(fr)
     if type(list(label2community.keys())[0]) == str:
@@ -66,15 +62,14 @@ label_schema = Features(
     }
 )
 
-# %%
 dataset = load_dataset('json', data_files={'train': os.path.join(root, "train2.json"), 
                                            'dev': os.path.join(root, "dev2.json"), 
-                                           'test': os.path.join(root, "test2-expln3-noimp.json")}, field='data', 
+                                           'test': os.path.join(root, "test2.json")}, field='data', 
                        cache_dir='Cache')
+# Load the label (statute) descriptions which will be used later
 label_dataset = load_dataset('json', data_files={'label': os.path.join(root, "label_descriptions.json")}, field='data', cache_dir='Cache')
 
 
-# %%
 dataset = dataset.map(schema.encode_example, features=schema)
 dataset = dataset.filter(lambda example: len(example['text']) != 0)
 label_dataset = label_dataset.map(label_schema.encode_example, features=label_schema)
@@ -82,7 +77,7 @@ label_dataset = label_dataset.map(label_schema.encode_example, features=label_sc
 dataset['train'] = dataset['train'].select([0])
 dataset['dev'] = dataset['dev'].select([0])
 
-# %%
+
 config = AutoConfig.from_pretrained(model_src)
 tokenizer = AutoTokenizer.from_pretrained(model_src) #, cache_dir='~/HDD/LSI-Cache')
 special_tokens = {'additional_special_tokens': ['<ENTITY>', '<ACT>', '<SECTION>']}
@@ -92,11 +87,11 @@ tokenizer.add_tokens(special_tokens['additional_special_tokens'])
 dataset = dataset.map(lambda example: tokenizer(list(example['text']), return_token_type_ids=False), batched=False)
 label_dataset = label_dataset.map(lambda example: tokenizer([example['title'] + ": "] + list(example['text']), return_token_type_ids=False), batched=False)
 
-# %%
+
 dataset.set_format(type='torch', columns=['input_ids', 'attention_mask', 'labels'])
 label_dataset.set_format(type='torch', columns=['input_ids', 'attention_mask'])
 
-# %%
+# Weight communities in the reverse order of their occurrence
 def generate_community_weights():
     weights = torch.zeros(num_communities)
     for exp in tqdm(dataset['train'], desc="Label Weights"):
@@ -114,7 +109,7 @@ else:
     with open(os.path.join(root, 'community_weights_tfidf.pkl'), 'wb') as fw:
         pkl.dump(community_weights, fw)
 
-# %%
+# Weight labels in the reverse order of their occurrence
 def generate_label_weights():
     weights = torch.zeros(len(label_vocab))
     for exp in tqdm(dataset['train'], desc="Label Weights"):
@@ -138,7 +133,7 @@ with open(os.path.join(root, 'ladan_edges_tfidf.json')) as fr:
     edges = json.load(fr)
 edges = torch.tensor(edges).permute(1, 0) #.to(DEVICE) # [2, num edges]
 
-# %%
+# Data collator
 def collate_fn(examples):
     
     max_segment_size = min(max(sum(s.size(0) - 2 for s in exp['input_ids']) for exp in examples), 4096)
@@ -167,7 +162,6 @@ def collate_fn(examples):
     
     
     if haslabels:
-        # print(input_ids.shape, attention_mask.shape, label_batch.input_ids.shape, label_batch.attention_mask.shape, community2label.shape, edges.shape, labels.shape, community_labels.shape)
         return BatchEncoding({'input_ids': input_ids, 
                               'attention_mask': attention_mask, 
                               'global_attention_mask': global_attention_mask,
@@ -183,7 +177,6 @@ def collate_fn(examples):
                               'attention_mask': attention_mask,
                               'global_attention_mask': global_attention_mask})
 
-# %%
 print("Encoding labels ...", end= ' ')
 label_loader = torch.utils.data.DataLoader(label_dataset['label'], batch_size=len(label_vocab), collate_fn=collate_fn)
 for label_batch in label_loader:
@@ -205,12 +198,6 @@ class LstmAttn(nn.Module):
         if attention_mask is None:
             attention_mask = torch.ones(inputs.shape[:2], dtype=torch.bool, device=inputs.device)
         
-        
-        lengths = attention_mask.float().sum(dim=1)
-        # inputs_packed = pack_padded_sequence(inputs, torch.clamp(lengths, min=1).cpu(), enforce_sorted=False, batch_first=True)  
-        # outputs_packed = self.lstm(inputs_packed)[0]
-        # outputs = pad_packed_sequence(outputs_packed, batch_first=True)[0]
-        
         outputs = self.lstm(inputs)[0]  
         
         activated_outputs = torch.tanh(self.dropout(self.attn_fc(outputs)))
@@ -218,32 +205,25 @@ class LstmAttn(nn.Module):
         context = context.expand(inputs.size(0), self.hidden_size)
         scores = torch.bmm(activated_outputs, context.unsqueeze(2)).squeeze(2)
         
-        # print(inputs.shape, outputs.shape, attention_mask.shape, scores.shape)
-        
         masked_scores = scores.masked_fill(~attention_mask, -1e-32)
         masked_scores = F.softmax(masked_scores, dim=1)
         
         hidden = torch.sum(outputs * masked_scores.unsqueeze(2), dim=1)
         return outputs, hidden
     
-
+# Encoder layer, for longformer hierarchical encoding is not needed
 class LongformerInternal(nn.Module):
     def __init__(self, encoder, drop=0.5):
         super().__init__()
         
         self.bert_encoder = encoder
         self.hidden_size = encoder.config.hidden_size
-        self.segment_encoder = LstmAttn(self.hidden_size, drop=drop)
         self.dropout = nn.Dropout(drop)
    
     def gradient_checkpointing_enable(self):
         self.bert_encoder.gradient_checkpointing_enable()
 
     def _encoder_forward(self, input_ids, attention_mask, global_attention_mask, dummy):
-        # print(self.bert_encoder(input_ids=input_ids, 
-        #                                       attention_mask=attention_mask).pooler_output.shape)
-        # print(self.bert_encoder(input_ids=input_ids, 
-        #                                       attention_mask=attention_mask).last_hidden_state.shape)
         intermediate = self.bert_encoder(input_ids=input_ids, 
                                         attention_mask=attention_mask,
                                         global_attention_mask=global_attention_mask)
@@ -253,30 +233,18 @@ class LongformerInternal(nn.Module):
     
     def forward(self, input_ids=None, 
                 attention_mask=None, 
-                global_attention_mask = None, 
-                encoder_outputs=None, 
-                dynamic_context=None):
+                global_attention_mask = None):
         if input_ids is not None:
             batch_size, max_seq_len = input_ids.shape
         
-        ## encode individual segments using Bert
         if input_ids is not None:
             dummy = torch.ones(1, dtype=torch.float, requires_grad=True)
             # outputs, hidden = checkpoint(self._encoder_forward, input_ids, attention_mask, global_attention_mask, dummy)
             outputs, hidden = self._encoder_forward(input_ids, attention_mask, global_attention_mask, dummy)
-            # print(encoder_outputs.shape)
-            # encoder_outputs = encoder_outputs.view(batch_size, self.hidden_size)
-            # print(encoder_outputs.shape)
-            # attention_mask = attention_mask.any(dim=-1)
             
-        ## encode each example by aggregating Bert segment outputs
-        # outputs, hidden = self.segment_encoder(inputs=encoder_outputs, 
-        #                                        attention_mask=attention_mask, 
-        #                                        dynamic_context=dynamic_context)
-        #outputs, hidden = encoder_outputs, None
-        # (batch, seq, emb) AND (batch, emb)
         return outputs, hidden
 
+# Graph distillation layer which diverges the communities
 class GraphDistillationLayer(MessagePassing):
     def __init__(self, hidden_dim, drop=0.5):
         super().__init__(aggr='add')
@@ -330,15 +298,15 @@ class LADANForTextClassificationOutput(ModelOutput):
     preds = None
     community_preds = None       
 
+# Overall LADAN Architecture
 class LADANForTextClassification(nn.Module):
     def __init__(self, hier_encoder, graph_distillation, num_communities, num_labels, community_weights=None, label_weights=None, drop=0.5):
         super().__init__()
-        # TODO
         self.hidden_size = 768 #hier_encoder.hidden_size
         self.num_communities = num_communities
         self.num_labels = num_labels
-        self.hier_encoder = hier_encoder
-        self.graph_distillation = graph_distillation
+        self.hier_encoder = hier_encoder                # Longformer
+        self.graph_distillation = graph_distillation    # Graph distillation layer
         self.label_context_tf = nn.Linear(2*768, 768)
         self.final_tf = LstmAttn(768)
         self.community_fc = nn.Linear(768, num_communities)
@@ -369,8 +337,6 @@ class LADANForTextClassification(nn.Module):
                 community_labels=None, # [batch size, num comm labels]
                 labels=None): # [batch size, num labels]
         
-        # print("Model:", community_labels.shape)
-        # print("Count", self.counter)
         self.counter += 1
         
         torch.cuda.empty_cache()
@@ -380,9 +346,7 @@ class LADANForTextClassification(nn.Module):
         # [batch size, max segments, hidden dim], [batch size, hidden dim]
         
         community_logits = self.dropout(self.community_fc(input_basic_states)) # [batch size, num comm labels]
-        community_preds = (torch.sigmoid(community_logits) > 0.25).float() # [batch size, num comm labels]
-        
-        # print("Model:", community_logits.shape, community_labels.shape)
+        community_preds = (torch.sigmoid(community_logits) > 0.25).float() # [batch size, num comm labels] 
         
         input_final_states = input_basic_states.clone()
         
@@ -392,21 +356,12 @@ class LADANForTextClassification(nn.Module):
                                                     global_attention_mask=label_global_attention_mask)[1] # [num labels, hidden dim]
             
             label_distinguish_states = self.graph_distillation(label_hidden_states, edges) # [num labels, hidden dim]     
-            # label_distinguish_states = label_hidden_states   
-            # print('ShittyCode')
-            # print(label_hidden_states, label_distinguish_states)
                 
             for comm_idx in range(community_preds.size(1)):
                 community_flag = community_labels[:, comm_idx] if self.training else community_preds[:, comm_idx] # [batch size,]
                 if community_flag.sum() == 0:
                     continue
                 label_flag = community2label[comm_idx, :] # [num labels,]
-                
-                # valid --> no. of labels in current comm
-                # valid_label_hidden_states = self.hier_encoder(input_ids=label_input_ids[label_flag.bool(), :, :], attention_mask=label_attention_mask[label_flag.bool(), :, :], segment_size=None)[1] # [num valid labels, hidden dim]
-                # valid_label_distinguish_states = self.graph_distillation(valid_label_hidden_states, edges) # [num valid labels, hidden dim]
-                
-                
                 
                 valid_label_distinguish_states = label_distinguish_states[label_flag.bool(), :] # [num valid labels, hidden dim]
                 
@@ -420,26 +375,19 @@ class LADANForTextClassification(nn.Module):
                 
                 input_final_states[community_flag.bool(), :] += input_distinguish_states 
             
-        except torch.cuda.OutOfMemoryError:
+        except torch.cuda.OutOfMemoryError:  # Skips the fusion step if GPU is out of memory instead of exiting
             print("+++ Skipping fusion")
             
         logits = self.dropout(self.classifier_fc(input_final_states)) # [batch size, num labels]
         preds = (torch.sigmoid(logits) > 0.5).float() # [batch size, num labels]
         
-        # print(community_logits.shape, community_labels.shape, logits.shape, labels.shape)
         community_loss = self.community_loss_fct(community_logits, community_labels)
         non_community_loss = self.loss_fct(logits, labels)
         loss = self.community_loss_factor * community_loss + non_community_loss
-        # print('Loss')
-        # print(loss)
-        # print(loss, community_loss, non_community_loss)
-        # print(logits, labels)
         
         return LADANForTextClassificationOutput(loss=loss, preds=preds, community_preds=community_preds)
     
 
-# %%
-# hier_bert = StasModel.from_pretrained(model_src, cache_dir='~/HDD/LSI-Cache')
 bert = AutoModel.from_pretrained(model_src) #, cache_dir='~/HDD/LSI-Cache')
 bert.resize_token_embeddings(len(tokenizer), 
                                  pad_to_multiple_of=8)
@@ -449,7 +397,7 @@ hier_bert.gradient_checkpointing_enable()
 graph_distillation = GraphDistillationNetwork(2, 768)
 model = LADANForTextClassification(hier_bert, graph_distillation, num_communities, len(label_vocab), community_weights, label_weights).to(DEVICE)
 
-# %%
+# Computes macro F1 score as reported in the paper, macro F1 score is also computed for each community
 def compute_metrics(p, threshold=0.5):
     metrics = {}
     
@@ -458,22 +406,17 @@ def compute_metrics(p, threshold=0.5):
     metrics['prec'] = precision_score(refs, preds, average='macro', labels=list(label_vocab.values()))
     metrics['rec'] = recall_score(refs, preds, average='macro', labels=list(label_vocab.values()))
     metrics['f1'] = f1_score(refs, preds, average='macro', labels=list(label_vocab.values()))
-    # print(preds)
-    # print(refs)
     community_preds = (p.predictions[1] > threshold).astype(float)
     community_refs = p.label_ids[1]
-    # print(community_preds)
-    # print(community_refs)
     metrics['c-prec'] = precision_score(community_refs, community_preds, average='macro', labels=list(range(len(community2label))))
     metrics['c-rec'] = recall_score(community_refs, community_preds, average='macro', labels=list(range(len(community2label))))
     metrics['c-f1'] = f1_score(community_refs, community_preds, average='macro', labels=list(range(len(community2label))))
     return metrics
 
-# %%
+# Different layers have different learning rates, here we set the learning rates for each layer
 def AdamWLLRD(model, bert_lr=1e-4, intermediate_lr=5e-4, top_lr=1e-3, wd=1e-2):
     opt_params = []
     named_params = list(model.named_parameters())
-    # print([n for (n, p) in named_params])
 
     no_decay = ["bias", "LayerNorm.bias", "LayerNorm.weight"]
     bert = ["hier_encoder.bert_encoder"]    
@@ -548,35 +491,30 @@ trainer = Trainer(
     model=model,
     args=training_args,
     data_collator=collate_fn,
-    train_dataset=dataset['train'],#.select(list(range(2000))),
-    eval_dataset=dataset['dev'],#.select(list(range(200))),
+    train_dataset=dataset['train'],
+    eval_dataset=dataset['dev'],
     compute_metrics=compute_metrics,
     optimizers=(opt, sch)
 )
 
 if training_args.do_train:
     _, _, metrics = trainer.train(resume_from_checkpoint=False)
-    #torch.save(model.state_dict(), os.path.join(root, output_fol, "pytorch_model.bin"))
     trainer.save_model()
     trainer.save_metrics('train', metrics)
     
 if training_args.do_eval:
-    #dev_results = trainer.evaluate(ignore_keys=['hidden_states'])
     model.load_state_dict(torch.load(os.path.join(output_fol, "pytorch_model.bin"), map_location=DEVICE))
     test_results = trainer.evaluate(eval_dataset=dataset['test'])
-    #print(dev_results)
     print(test_results)
     trainer.save_metrics('test', test_results)
-    #with open(os.path.join(root, output_fol, "eval_results.json"), 'w') as fw:
-    #json.dump(test_results, fw, indent=4)
     
 if training_args.do_predict:
     model.load_state_dict(torch.load(os.path.join(output_fol, "pytorch_model.bin"), map_location=DEVICE))
     predictions, label_ids, results = trainer.predict(test_dataset=dataset['test'])
     
-    np.save(os.path.join(output_fol, "predictions_expln3_noimp.npy"), predictions[0])
-    np.save(os.path.join(output_fol, "label_ids_expln3_noimp.npy"), label_ids[0])
-    np.save(os.path.join(output_fol, "predictions_comm_expln3_noimp.npy"), predictions[1])
-    np.save(os.path.join(output_fol, "label_ids_comm_expln3_noimp.npy"), label_ids[1])
-    trainer.save_metrics('test2_expln3_noimp', results)
+    np.save(os.path.join(output_fol, "predictions.npy"), predictions[0])
+    np.save(os.path.join(output_fol, "label_ids.npy"), label_ids[0])
+    np.save(os.path.join(output_fol, "predictions_comm.npy"), predictions[1])
+    np.save(os.path.join(output_fol, "label_ids_comm.npy"), label_ids[1])
+    trainer.save_metrics('test', results)
     print(results)
