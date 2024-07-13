@@ -67,6 +67,7 @@ def generate_graph(label_vocab, type_map, label_tree_edges, cit_net_edges, label
 
     return node_vocab, edge_vocab, edge_indices, adjacency
 
+# LSTM Attn layer used in graph modules
 class LstmAttn(nn.Module):
     def __init__(self, hidden_size, drop=0.5):
         super().__init__()
@@ -98,75 +99,19 @@ class LstmAttn(nn.Module):
         hidden = torch.sum(outputs * masked_scores.unsqueeze(2), dim=1)
         return outputs, hidden
 
-class HierBert(nn.Module):
-    def __init__(self, encoder, fragment_size=512, drop=0.5):
-        super().__init__()
-        
-        self.bert_encoder = encoder
-        self.hidden_size = encoder.config.hidden_size
-        self.fragment_size = fragment_size
-        self.segment_encoder = LstmAttn(self.hidden_size, drop=drop)
-        self.dropout = nn.Dropout(drop)
-   
-    def gradient_checkpointing_enable(self):
-        self.bert_encoder.gradient_checkpointing_enable()
-
-    def _encoder_forward(self, input_ids, attention_mask, dummy):
-        return self.dropout(self.bert_encoder(input_ids=input_ids, attention_mask=attention_mask).last_hidden_state)[:, 0, :]
-    
-    def forward(self, input_ids=None, attention_mask=None, encoder_outputs=None, dynamic_context=None):
-        if input_ids is not None:
-            batch_size, max_num_segments, max_segment_size = input_ids.shape
-        else:
-            batch_size, max_num_segments = encoder_outputs.shape[:2]
-        
-        ## encode individual segments using Bert
-        if input_ids is not None:
-            input_ids_flat = input_ids.view(-1, max_segment_size)
-            attention_mask_flat = attention_mask.view(-1, max_segment_size)
-            dummy = torch.ones(1, dtype=torch.float, requires_grad=True)
-            
-            if self.fragment_size is not None:
-                encoder_outputs = []
-                
-                for fragment_idx, sent_idx in enumerate(range(0, batch_size * max_num_segments, self.fragment_size)):
-                    input_ids_fragment = input_ids_flat[sent_idx : sent_idx + self.fragment_size]
-                    attention_mask_fragment = attention_mask_flat[sent_idx : sent_idx + self.fragment_size]   
-                    encoder_outputs_fragment = checkpoint(self._encoder_forward, input_ids_fragment, attention_mask_fragment, dummy, use_reentrant=False)
-                    encoder_outputs.append(encoder_outputs_fragment)
-                
-                encoder_outputs = torch.cat(encoder_outputs, dim=0)
-                
-            else:
-                encoder_outputs = checkpoint(self._encoder_forward, input_ids_flat, attention_mask_flat, dummy)
-                
-            encoder_outputs = encoder_outputs.view(batch_size, max_num_segments, self.hidden_size)
-            attention_mask = attention_mask.any(dim=2)
-            
-        ## encode each example by aggregating Bert segment outputs
-        outputs, hidden = self.segment_encoder(inputs=encoder_outputs, attention_mask=attention_mask, dynamic_context=dynamic_context)
-        #outputs, hidden = encoder_outputs, None
-        # (batch, seq, emb) AND (batch, emb)
-        return outputs, hidden
-
-# Edit LongformerInternal
+# Longformer Encoder
 class LongformerInternal(nn.Module):
     def __init__(self, encoder, drop=0.5):
         super().__init__()
         
         self.bert_encoder = encoder
         self.hidden_size = encoder.config.hidden_size
-        self.segment_encoder = LstmAttn(self.hidden_size, drop=drop)
         self.dropout = nn.Dropout(drop)
    
     def gradient_checkpointing_enable(self):
         self.bert_encoder.gradient_checkpointing_enable()
 
     def _encoder_forward(self, input_ids, attention_mask, global_attention_mask, dummy):
-        # print(self.bert_encoder(input_ids=input_ids, 
-        #                                       attention_mask=attention_mask).pooler_output.shape)
-        # print(self.bert_encoder(input_ids=input_ids, 
-        #                                       attention_mask=attention_mask).last_hidden_state.shape)
         intermediate = self.bert_encoder(input_ids=input_ids, 
                                         attention_mask=attention_mask,
                                         global_attention_mask=global_attention_mask)
@@ -174,26 +119,15 @@ class LongformerInternal(nn.Module):
         hidden = self.dropout(intermediate.last_hidden_state)[:, 0, :]
         return outputs, hidden
     
-    def forward(self, input_ids=None, attention_mask=None, global_attention_mask = None, encoder_outputs=None, dynamic_context=None):
+    def forward(self, input_ids=None, attention_mask=None, global_attention_mask = None):
         if input_ids is not None:
             batch_size, max_seq_len = input_ids.shape
         
-        ## encode individual segments using Bert
         if input_ids is not None:
             dummy = torch.ones(1, dtype=torch.float, requires_grad=True)
             # outputs, hidden = checkpoint(self._encoder_forward, input_ids, attention_mask, global_attention_mask, dummy)
             outputs, hidden = self._encoder_forward(input_ids, attention_mask, global_attention_mask, dummy)
-            # print(encoder_outputs.shape)
-            # encoder_outputs = encoder_outputs.view(batch_size, self.hidden_size)
-            # print(encoder_outputs.shape)
-            # attention_mask = attention_mask.any(dim=-1)
             
-        ## encode each example by aggregating Bert segment outputs
-        # outputs, hidden = self.segment_encoder(inputs=encoder_outputs, 
-        #                                        attention_mask=attention_mask, 
-        #                                        dynamic_context=dynamic_context)
-        #outputs, hidden = encoder_outputs, None
-        # (batch, seq, emb) AND (batch, emb)
         return outputs, hidden
 
 
@@ -292,8 +226,6 @@ class MatchNet(torch.nn.Module):
     def __init__(self, hidden_size, num_labels, drop=0.1):
         super().__init__()
         
-        # self.match_lstm = LstmNet(hidden_size)
-        # self.match_attn = AttnNet(hidden_size, drop=drop)
         self.matcher = LstmAttn(hidden_size, drop=drop)
         self.match_fc = torch.nn.Linear(2 * hidden_size, num_labels)
         
@@ -302,8 +234,6 @@ class MatchNet(torch.nn.Module):
     def forward(self, fact_inputs, sec_inputs, context=None): # [D, H], [C, H]
         sec_inputs = sec_inputs.expand(fact_inputs.size(0), sec_inputs.size(0), sec_inputs.size(1)) # [D, C, H]
         
-        # sec_hidden_all = self.match_lstm(sec_inputs) # [D, C, H]
-        # sec_hidden = self.match_attn(sec_hidden_all, dynamic_context=context) # [D, H]
         sec_hidden = self.matcher(sec_inputs, dynamic_context=context)[1]
         
         logits = self.dropout(self.match_fc(torch.cat([fact_inputs, sec_hidden], dim=1))) # [D, C]
@@ -316,7 +246,7 @@ class TextClassifierOutput(ModelOutput):
     logits:torch.Tensor = None
     hidden_states:torch.Tensor = None
 
-
+# Main LeSICiN architecture
 class LeSICiNBertForTextClassification(torch.nn.Module):
     def __init__(
         self, 
@@ -334,10 +264,6 @@ class LeSICiNBertForTextClassification(torch.nn.Module):
         
         super().__init__()
         
-        # self.text_encoder = HierAttnNet(hidden_size, vocab_size=vocab_size)
-        # self.graph_encoder = MetapathAggrNet(node_vocab_size, edge_vocab_size, hidden_size)
-        # self.match_network = MatchNet(hidden_size, num_labels)
-
         self.text_encoder = text_encoder
         
         self.post_encoder = torch.nn.Linear(text_encoder.hidden_size, hidden_size)
@@ -352,7 +278,6 @@ class LeSICiNBertForTextClassification(torch.nn.Module):
         
         self.criterion = torch.nn.BCEWithLogitsLoss(pos_weight=label_weights)
         
-        # self.pred_threshold = pthresh
         self.lambdas = lambdas # weights for scores
         self.thetas = thetas # weights for losses
         self.num_mpaths = num_mpaths
@@ -368,7 +293,6 @@ class LeSICiNBertForTextClassification(torch.nn.Module):
                 loss += self.thetas[i] * self.criterion(logits, labels)
         return loss
         
-    # def forward(self, fact_batch, sec_batch, pthresh=None): # We have D documents in fact_batch and C sections in sec_batch
     def forward(
         self,
         ids=None,
@@ -385,29 +309,14 @@ class LeSICiNBertForTextClassification(torch.nn.Module):
         sec_node_input_ids = None,
         sec_edge_input_ids = None,
     ):        
-        # Encode fact text using HAN
-        # if not fact_batch.sent_vectorized:
-        #     fact_attr_hidden = self.text_encoder(tokens=fact_batch.tokens, mask=fact_batch.mask) # [D, H] 
-        # else:
-        #     fact_attr_hidden = self.text_encoder(doc_inputs=fact_batch.doc_inputs, mask=fact_batch.mask) # [D, H]
+        
         fact_attr_hidden = self.text_encoder(input_ids=input_ids, 
                                              attention_mask=attention_mask, 
                                              global_attention_mask=global_attention_mask)[1]
-        # fact_attr_hidden = self.post_encoder_act(self.post_encoder(fact_attr_hidden))
-        # fact_attr_hidden = self.text_encoder(input_ids=input_ids, attention_mask=attention_mask)
-        
-        # Encode sec text using HAN
-        # if not sec_batch.sent_vectorized:
-        #     sec_attr_hidden = self.text_encoder(tokens=sec_batch.tokens, mask=sec_batch.mask) # [C, H]
-        # else:
-        #     sec_attr_hidden = self.text_encoder(doc_inputs=sec_batch.doc_inputs, mask=sec_batch.mask) # [C, H]
         
         sec_attr_hidden = self.text_encoder(input_ids=sec_input_ids, 
                                             attention_mask=sec_attention_mask,
                                             global_attention_mask=global_sec_attention_mask)[1]
-        # print(torch.cuda.memory_reserved(0) / 1000000, flush=True)
-        # sec_attr_hidden = self.post_encoder_act(self.post_encoder(sec_attr_hidden))
-        # sec_attr_hidden = self.text_encoder(input_ids=sec_input_ids, attention_mask=sec_attention_mask)
         
         # context vector for matching with fact attributes
         attr_match_context = self.dropout(self.match_context_transform(fact_attr_hidden)) # [D, H]
@@ -416,8 +325,6 @@ class LeSICiNBertForTextClassification(torch.nn.Module):
         # sec-side context vectors for Struct Encoder
         sec_intra_context = self.dropout(self.intra_context_transform(sec_attr_hidden)).repeat(self.num_mpaths, 1) # [M*C, H]
         sec_inter_context = self.dropout(self.inter_context_transform(sec_attr_hidden)) # [C, H]
-        
-        # print(torch.cuda.memory_reserved(0) / 1000000, flush=True)
         
         # Encode sec graph using MAGNN
         sec_struct_hidden = self.graph_encoder(sec_node_input_ids, 
@@ -443,87 +350,12 @@ class LeSICiNBertForTextClassification(torch.nn.Module):
         
         # Combine scores and losses    
         scores = (self.lambdas[0] * attr_scores + self.lambdas[-1] * align_scores)
-        # predictions = (scores > self.pred_threshold).float()
         
-        # if fact_batch.annotated:
         loss = self.calculate_losses([attr_logits, struct_logits, align_logits], labels)
-        # else:
-        #     loss = None
-            
-        # return loss, predictions
-        # print('Hello', flush=True)
-        # print(torch.cuda.memory_reserved(0) / 1000000, flush=True)
+        
         return TextClassifierOutput(loss=loss, logits=scores)
 
-
-def sample_labels(examples, max_labels = 25) -> list:
-    pos_labels = set()
-    rem_labels = copy.deepcopy(comm_to_label)
-    pos_cluster_ids = set()
-    for exp in examples:
-        for label in exp['labels'].detach().numpy():
-            pos_labels.add(label)
-       
-         
-    for label in pos_labels:
-        # print(label, label_to_comm[label])
-        pos_cluster_ids.add(label_to_comm[label])
-        rem_labels[label_to_comm[label]].remove(label)
-        if len(rem_labels[label_to_comm[label]]) == 0:
-            rem_labels.pop(label_to_comm[label])
-            pos_cluster_ids.remove(label_to_comm[label])
-
-    # From the communities of positive labels
-    neg_labels = set()
-    for label in pos_labels:
-        if len(pos_labels) + len(neg_labels) < max_labels:
-            if label_to_comm[label] not in rem_labels:
-                continue
-            else:
-                comm_labels_left = list(rem_labels[label_to_comm[label]])
-                random_index = np.random.randint(0, len(comm_labels_left))
-                selected_label = comm_labels_left[random_index]
-                neg_labels.add(selected_label)
-                
-                rem_labels[label_to_comm[label]].remove(selected_label)
-                if len(rem_labels[label_to_comm[label]]) == 0:
-                    rem_labels.pop(label_to_comm[label])
-                    pos_cluster_ids.remove(label_to_comm[label])
-                                            
-        else: break
-    
-    # From the communities of positive labels till they have been exhausted
-    while len(pos_cluster_ids) > 0 and len(pos_labels) + len(neg_labels) < max_labels:
-        comm_list = list(pos_cluster_ids)
-        comm_index_random = np.random.randint(0, len(comm_list))
-        comm = comm_list[comm_index_random]
-        
-        left_labels = list(rem_labels[comm])
-        left_labels_index = np.random.randint(0, len(left_labels))
-        selected_label = left_labels[left_labels_index]
-        neg_labels.add(selected_label)
-        rem_labels[comm].remove(selected_label)
-        
-        if len(rem_labels[comm]) == 0:
-            rem_labels.pop(comm)
-            pos_cluster_ids.remove(comm)
-
-    # From all other communities
-    while len(pos_labels) + len(neg_labels) < max_labels:
-        comm_list = list(rem_labels)
-        comm_index_random = np.random.randint(0, len(comm_list))
-        comm = comm_list[comm_index_random]
-        left_labels = list(rem_labels[comm])
-        left_labels_index = np.random.randint(0, len(left_labels))
-        selected_label = left_labels[left_labels_index]
-        neg_labels.add(selected_label)
-        rem_labels[comm].remove(selected_label)
-        
-        if len(rem_labels[comm]) == 0:
-            rem_labels.pop(comm)
-            
-    return list(pos_labels | neg_labels)  
-
+# Encode fact-texts and generate their tensors
 def generate_text_tensors(dataset, tokenizer):
     max_seq_len = min(max(sum(s.size(0) - 2 for s in exp['input_ids']) for exp in dataset), 4096)
     example_ids = []
@@ -543,9 +375,9 @@ def generate_text_tensors(dataset, tokenizer):
         
     attention_mask = input_ids != tokenizer.pad_token_id
     global_attention_mask = input_ids == tokenizer.bos_token_id
-    # print(input_ids.shape)
     return example_ids, input_ids, attention_mask, global_attention_mask
-   
+
+# Encode statute descriptions and generate their tensors
 def generate_section_tensors(dataset, text_dataset, tokenizer, 
                              label_to_comm: Dict[int, int] = None, 
                              comm_to_label: Dict[int, set] = None,
@@ -553,10 +385,8 @@ def generate_section_tensors(dataset, text_dataset, tokenizer,
     
     max_seq_len = min(max(sum(s.size(0) - 2 for s in exp['input_ids']) for exp in dataset), 4096)
     example_ids = []
-    
-    # sampled_ids = sample_labels(text_dataset, max_labels) if label_to_comm is not None else list(range(0, len(dataset)))
-    
-    sampled_ids = list(range(0, len(dataset)))
+  
+    sampled_ids = list(range(0, len(dataset))) # Restrict the number of labels (may reduce mem usage), currently we use all labels
     
     input_ids = torch.zeros(len(dataset), max_seq_len, dtype=torch.long).fill_(tokenizer.pad_token_id)
     
@@ -580,7 +410,7 @@ def generate_section_tensors(dataset, text_dataset, tokenizer,
     # print(input_ids.shape)
     return example_ids, input_ids[sampled_ids], attention_mask[sampled_ids], global_attention_mask[sampled_ids]
 
-
+# Generate the metapaths of the graph
 def generate_metapaths(indices, schemas, adjacency, edge_vocab, num_samples=8): # [D,]
     indices = indices.repeat(num_samples) # [M*D,]
     
@@ -606,43 +436,6 @@ def generate_metapaths(indices, schemas, adjacency, edge_vocab, num_samples=8): 
         edge_tokens.append(ins_edge_tokens)
     
     return tokens, edge_tokens
-
-def collate_sections(sec_dataset, tokenizer, schemas=None, adjacency=None, type_map=None, node_vocab=None, edge_vocab=None):
-    
-    example_ids = []
-    
-    # for exp in sec_dataset:
-    #     print(exp)
-    # print()
-    max_segments = min(max(len(exp['input_ids']) for exp in sec_dataset), 128)
-    max_segment_size = min(max(max(len(sent) for sent in exp['input_ids']) for exp in sec_dataset), 128)
-    # max_segments, max_segment_size = 128, 128
-
-    input_ids = torch.zeros(len(sec_dataset), max_segments, max_segment_size, dtype=torch.long).fill_(tokenizer.pad_token_id)
-    
-    for exp_idx, exp in enumerate(sec_dataset):
-        example_ids.append(exp['id'])
-        for sent_idx, sent in enumerate(exp['input_ids'][:128]):
-            sent = sent[:128]
-            input_ids[exp_idx, sent_idx, :len(sent)] = sent
-    
-    attention_mask = input_ids != tokenizer.pad_token_id
-
-    node_tokens, edge_tokens = None, None
-    if schemas is not None:
-        trg_node_tokens = torch.tensor([node_vocab[type_map[x]][x] for x in example_ids])
-        node_tokens, edge_tokens = generate_metapaths(trg_node_tokens, schemas, adjacency, edge_vocab, num_samples=8)
-
-    
-    return BatchEncoding(
-        {
-            'ids': example_ids,
-            'input_ids': input_ids, 
-            'attention_mask': attention_mask,
-            'node_input_ids': node_tokens,
-            'edge_input_ids': edge_tokens 
-        }
-    )
 
 @dataclass
 class DataCollatorForLSIGraph(DataCollatorMixin):
@@ -704,6 +497,7 @@ class DataCollatorForLSIGraph(DataCollatorMixin):
             }
         )
 
+# Compute macro F1 scores
 def compute_metrics(p, threshold=0.75):
     metrics = {}
     preds = (p.predictions > threshold).astype(float)
@@ -711,10 +505,9 @@ def compute_metrics(p, threshold=0.75):
     metrics['prec'] = precision_score(refs, preds, average='macro', labels=list(label_vocab.values()))
     metrics['rec'] = recall_score(refs, preds, average='macro', labels=list(label_vocab.values()))
     metrics['f1'] = f1_score(refs, preds, average='macro', labels=list(label_vocab.values()))
-    #print(metrics['prec'], metrics['rec'], metrics['f1'])
-    #return {'metrics': metrics, 'predictions': p.predictions, 'references': refs}
     return metrics
 
+# Different layers have different learning rates, here we set the learning rates for each layer
 def AdamWLLRD(model, bert_lr=1e-4, intermediate_lr=1e-3, top_lr=1e-4, wd=1e-2):
     opt_params = []
     named_params = list(model.named_parameters())
@@ -757,7 +550,7 @@ def seed_worker(_):
     worker_seed = torch.initial_seed() % 2**32
     set_seed(worker_seed)
 
-
+# Train, dev and test settings require different data in this model
 class LSIGraphTrainer(Trainer):
     def __init__(self, label_vocab=None, sec_data=None, schemas=None, adjacency=None, type_map=None, node_vocab=None, edge_vocab=None, label_to_comm=None, comm_to_label=None, **kwargs):
         super().__init__(**kwargs)
@@ -876,10 +669,6 @@ if __name__ == '__main__':
         }
     )
 
-
-    # In[19]:
-
-
     dataset = load_dataset(
         'json', 
         data_files={'train': os.path.join(root, "train2.json"), 
@@ -914,19 +703,11 @@ if __name__ == '__main__':
         label_to_comm = None
         comm_to_label = None
 
-
-    # In[20]:
-
-
     dataset = dataset.map(schema.encode_example, features=schema)
     sec_dataset = sec_dataset.map(sec_schema.encode_example, features=sec_schema)
     dataset = dataset.filter(lambda example: len(example['text']) != 0)
     print(type(dataset['train']))
 
-    #print(dataset['train'][0])
-
-    #quit()
-    # In[21]:
     dataset['train'] = dataset['train'].select([0])
     dataset['dev'] = dataset['dev'].select([0])
 
@@ -936,15 +717,12 @@ if __name__ == '__main__':
     tokenizer.add_special_tokens(special_tokens)
     tokenizer.add_tokens(special_tokens['additional_special_tokens'])
 
-    # In[23]:
-
     dataset = dataset.map(lambda example: tokenizer(list(example['text']), 
                                                     return_token_type_ids=False), 
                           batched=False)
     sec_dataset = sec_dataset.map(lambda example: tokenizer(list(example['text']), 
                                                             return_token_type_ids=False), 
                                   batched=False)
-
 
     if not os.path.exists(os.path.join(root, "label_weights_custom.pkl")):
         label_weights = torch.zeros(len(label_vocab))
@@ -958,14 +736,8 @@ if __name__ == '__main__':
         with open(os.path.join(root, "label_weights_custom.pkl"), 'rb') as fr:
             label_weights = pkl.load(fr)
 
-
-    # In[24]:
-
-
     dataset.set_format(type='torch', columns=['input_ids', 'attention_mask', 'labels'], output_all_columns=True)
     sec_dataset.set_format(type='torch', columns=['input_ids', 'attention_mask'], output_all_columns=True)
-
-    # print(dataset['train'].features)
 
     with open(os.path.join(root, "type_map.json")) as fr:
         type_map = json.load(fr)
@@ -1005,15 +777,9 @@ if __name__ == '__main__':
         sec_schemas=schemas['section'],
     )
 
-    # model = HierBertForTextClassfication(hier_bert, len(label_vocab), label_weights=label_weights).cuda()
-    
-    #model.load_state_dict(torch.load(os.path.join(root, output_fol, "pytorch_model.bin"), map_location='cuda'))
-
     opt = AdamWLLRD(model)
     sch = transformers.get_linear_schedule_with_warmup(opt, num_warmup_steps=345,
                                                        num_training_steps=3600)
-    
-    #sec_batch = collate_sections(sec_dataset['main'], tokenizer, schemas['section'], adjacency, type_map, node_vocab, edge_vocab)
 
     training_args = TrainingArguments(
         output_dir=output_fol,
@@ -1045,9 +811,6 @@ if __name__ == '__main__':
         gradient_checkpointing=False,
     )
 
-
-    # In[ ]:
-
     trainer = LSIGraphTrainer(
         model=model,
         tokenizer=tokenizer,
@@ -1067,34 +830,21 @@ if __name__ == '__main__':
         comm_to_label = comm_to_label
     )
 
-    #print(model)
-
-
-    # In[ ]:
     if training_args.do_train:
         _, _, metrics = trainer.train(ignore_keys_for_eval=['hidden_states'], resume_from_checkpoint=False)
-        #torch.save(model.state_dict(), os.path.join(root, output_fol, "pytorch_model.bin"))
         trainer.save_model()
         trainer.save_metrics('train', metrics)
     if training_args.do_eval:
-        #dev_results = trainer.evaluate(ignore_keys=['hidden_states'])
         model.load_state_dict(torch.load(os.path.join(output_fol, "pytorch_model.bin"), map_location='cuda'))
         test_results = trainer.evaluate(eval_dataset=dataset['test'], ignore_keys=['hidden_states'])
-        #print(dev_results)
-        #print(type(test_results))
-        #print(test_results['eval_metrics'])
         print(test_results)
-        # trainer.save_metrics('test_expln_noimp', test_results) #['eval_metrics'])
-        #with open(os.path.join(root, output_fol, "predictions.pkl"), 'wb') as fw:
-            #pkl.dump({'predictions': test_results['eval_predictions'], 'references': test_results['eval_references']}, fw)
-
-        #with open(os.path.join(root, output_fol, "eval_results.json"), 'w') as fw:
-            #json.dump(test_results, fw, indent=4)
+        trainer.save_metrics('test', test_results) #['eval_metrics'])
+        
     if training_args.do_predict:
         model.load_state_dict(torch.load(os.path.join(output_fol, "pytorch_model.bin"), map_location='cuda'))
         predictions, label_ids, results = trainer.predict(test_dataset=dataset['test'], ignore_keys=['hidden_states'])
-        np.save(os.path.join(output_fol, "predictions_expln3_noimp.npy"), predictions)
-        np.save(os.path.join(output_fol, "label_ids_expln3_noimp.npy"), label_ids)
-        trainer.save_metrics('test2_expln3_noimp', results)
+        np.save(os.path.join(output_fol, "predictions.npy"), predictions)
+        np.save(os.path.join(output_fol, "label_ids.npy"), label_ids)
+        trainer.save_metrics('test', results)
         print(results)
 
