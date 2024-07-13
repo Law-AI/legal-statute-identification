@@ -1,8 +1,3 @@
-#!/usr/bin/env python
-# coding: utf-8
-
-# In[30]:
-
 
 import datasets
 import torch
@@ -27,11 +22,10 @@ from dataclasses import dataclass
 from sklearn.metrics import precision_score, recall_score, f1_score
 
 os.environ["TOKENIZERS_PARALLELISM"] = 'true'
-# In[17]:
 
-root = sys.argv[1]
-model_src = sys.argv[2]
-output_fol = sys.argv[3]
+root = sys.argv[1]                  # Dataset directory
+model_src = sys.argv[2]             # Model name/directory
+output_fol = sys.argv[3]            # Output Folder
 CACHE_DIR = "~/HDD/LSI-Cache"
 
 with open(os.path.join(root, "label_vocab.json")) as fr:
@@ -56,8 +50,6 @@ label_schema = Features(
     }
 )
 
-# In[19]:
-
 
 dataset = load_dataset('json', data_files={'train': os.path.join(root, "train.json"), 
                                            'dev': os.path.join(root, "dev.json"), 
@@ -68,20 +60,10 @@ dataset = load_dataset('json', data_files={'train': os.path.join(root, "train.js
 label_dataset = load_dataset('json', data_files={'label': os.path.join(root, "label_descriptions.json")}, 
                              field='data', 
                              cache_dir='~/HDD/LSI-Cache')
-# In[20]:
-
 
 dataset = dataset.map(schema.encode_example, features=schema)
 dataset = dataset.filter(lambda example: len(example['text']) != 0)
 label_dataset = label_dataset.map(label_schema.encode_example, features=label_schema)
-
-dataset['train'] = dataset['train'].select([0])
-dataset['dev'] = dataset['dev'].select([0])
-
-#print(dataset['train'][0])
-
-#quit()
-# In[21]:
 
 config = AutoConfig.from_pretrained(model_src) #, cache_dir=CACHE_DIR)
 tokenizer = AutoTokenizer.from_pretrained(model_src)
@@ -93,25 +75,16 @@ assert tokenizer.pad_token_id is not None
 assert tokenizer.bos_token_id is not None
 assert tokenizer.eos_token_id is not None
 
-
-# In[23]:
-
-
 dataset = dataset.map(lambda example: tokenizer(list(example['text']), return_token_type_ids=False), 
                       batched=False)
 label_dataset = label_dataset.map(lambda example: tokenizer([example['title'] + ": "] + list(example['text']),
                                                             return_token_type_ids=False), 
                                   batched=False)
 
-
-# In[24]:
-
-
 dataset.set_format(type='torch', columns=['input_ids', 'attention_mask', 'labels'])
 label_dataset.set_format(type='torch', columns=['input_ids', 'attention_mask'])
 
-print(dataset['train'].features)
-# In[25]:
+# Generate label weights in the reverse order of their frequency
 def generate_label_weights():
     weights = torch.zeros(len(label_vocab))
     for exp in tqdm(dataset['train'], desc="Label Weights"):
@@ -126,9 +99,8 @@ else:
     label_weights = generate_label_weights().cuda()
     with open(os.path.join(root, 'label_weights.pkl'), 'wb') as fw:
         pkl.dump(label_weights, fw)
-#label_weights = None
-#print(label_weights)
 
+# Data collator
 def collate_fn(examples):
     max_segment_size = min(max(sum(s.size(0) - 2 for s in exp['input_ids']) for exp in examples), 4096)
     haslabels = True if 'labels' in examples[0] else False
@@ -136,7 +108,6 @@ def collate_fn(examples):
     if haslabels:
         labels = torch.zeros(len(examples), len(label_vocab))
     for exp_idx, exp in enumerate(examples):
-        # print(exp['input_ids'])
         exp_text = torch.cat([s[1:-1] for s in exp['input_ids']], dim=0)[:max_segment_size - 2] if len(exp['input_ids']) > 1 else exp['input_ids'][0][:max_segment_size - 2]
         input_ids[exp_idx, 1:len(exp_text)+1] = exp_text
         input_ids[exp_idx, 0] = tokenizer.bos_token_id
@@ -167,8 +138,7 @@ label_loader = torch.utils.data.DataLoader(label_dataset['label'],
 for label_batch in label_loader:
     pass
 print(label_batch.input_ids.shape)
-
-# %%
+# Main BAF layer
 class BilinearAttentionFusion(nn.Module):
     def __init__(self, hidden_dim, intermediate_dim, drop=0.1):
         super().__init__()
@@ -224,7 +194,7 @@ class TextClassifierOutput(ModelOutput):
     logits:torch.Tensor = None
     hidden_states:torch.Tensor = None
 
-
+# BAF + Longformer Encoder
 class BertBAFForTextClassfication(nn.Module):
     def __init__(self, encoder, baf, num_labels, label_weights=None, segment_size=None, drop=0.5):
         super().__init__()
@@ -263,9 +233,7 @@ class BertBAFForTextClassfication(nn.Module):
         label_input_ids_short = label_input_ids
         label_attention_mask_short = label_attention_mask
         label_global_attention_mask_short = label_global_attention_mask
-        # label_input_ids_short = label_input_ids[:25, :]
-        # label_attention_mask_short = label_attention_mask[:25, :]
-        # label_global_attention_mask_short = label_global_attention_mask[:25, :]   
+          
         try:
             if self.segment_size is None:
                 label_hidden_states = self.dropout(self.encoder(input_ids=label_input_ids_short, 
@@ -278,12 +246,10 @@ class BertBAFForTextClassfication(nn.Module):
                                                                             attention_mask=label_attention_mask_short[i:i+self.segment_size, :],
                                                                             global_attention_mask=label_global_attention_mask_short[i:i+self.segment_size, :]).last_hidden_state[:, 0, :]))
                 label_hidden_states = torch.cat(label_hidden_states, dim=0)
-                # print(input_hidden_states.shape, label_hidden_states.shape)
-                        
                 
             input_fusion_states = self.baf(input_hidden_states, label_hidden_states)
         
-        except torch.cuda.OutOfMemoryError:
+        except torch.cuda.OutOfMemoryError: # Skips the fusion step if GPU is out of memory instead of exiting
             print("+++ Skipping fusion")
             input_fusion_states = None
         
@@ -298,17 +264,12 @@ class BertBAFForTextClassfication(nn.Module):
         return TextClassifierOutput(loss=loss, logits=torch.sigmoid(logits), hidden_states=input_final_states) 
 
 
-# In[31]:
-
-
 bert = AutoModel.from_pretrained(model_src) #, cache_dir=CACHE_DIR)
 bert.resize_token_embeddings(len(tokenizer), pad_to_multiple_of=8)
-# hier_bert = HierBert(bert)
 baf = BilinearAttentionFusion(768, 512)
 model = BertBAFForTextClassfication(bert, baf, len(label_vocab), label_weights=label_weights, segment_size=None).cuda()
 
-
-
+# Compute macro F1 scores
 def compute_metrics(p, threshold=0.6):
     metrics = {}
     preds = (p.predictions > threshold).astype(float)
@@ -318,7 +279,7 @@ def compute_metrics(p, threshold=0.6):
     metrics['f1'] = f1_score(refs, preds, average='macro', labels=list(label_vocab.values()))
     return metrics
 
-
+# Different layers have different learning rates, here we set the learning rates for each layer
 def AdamWLLRD(model, bert_lr=5e-5, intermediate_lr=1e-3, top_lr=1e-3, wd=1e-2):
     opt_params = []
     named_params = list(model.named_parameters())
@@ -360,16 +321,9 @@ def AdamWLLRD(model, bert_lr=5e-5, intermediate_lr=1e-3, top_lr=1e-3, wd=1e-2):
     return AdamW(opt_params, lr=bert_lr, correct_bias=True)
 
 
-# In[ ]:
-
-
 opt = AdamWLLRD(model)
 sch = transformers.get_linear_schedule_with_warmup(opt, num_training_steps=345, 
                                                    num_warmup_steps=3600)
-
-
-# In[ ]:
-
 
 training_args = TrainingArguments(
     output_dir=output_fol,
@@ -402,10 +356,6 @@ training_args = TrainingArguments(
     label_names=['labels']
 )
 
-
-# In[ ]:
-
-
 trainer = Trainer(
     model=model,
     args=training_args,
@@ -416,26 +366,18 @@ trainer = Trainer(
     optimizers=(opt, sch)
 )
 
-print(model)
-
-# In[ ]:
 if training_args.do_train:
     _, _, metrics = trainer.train(ignore_keys_for_eval=['hidden_states'], resume_from_checkpoint=False)
-    #torch.save(model.state_dict(), os.path.join(output_fol, "pytorch_model.bin"))
     trainer.save_model()
     trainer.save_metrics('train', metrics)
 if training_args.do_eval:
-    #dev_results = trainer.evaluate(ignore_keys=['hidden_states'])
     model.load_state_dict(torch.load(os.path.join(output_fol, "pytorch_model.bin"), map_location='cuda'))
     test_results = trainer.evaluate(eval_dataset=dataset['test'], ignore_keys=['hidden_states'])
-    #print(dev_results)
     print(test_results)
-    # trainer.save_metrics('test_expln', test_results)
-    #with open(os.path.join(root, output_fol, "eval_results.json"), 'w') as fw:
-    #json.dump(test_results, fw, indent=4)
+    trainer.save_metrics('test', test_results)
 if training_args.do_predict:
     model.load_state_dict(torch.load(os.path.join(output_fol, "pytorch_model.bin"), map_location='cuda'))
     predictions, label_ids, results = trainer.predict(test_dataset=dataset['test'], ignore_keys=['hidden_states'])
-    np.save(os.path.join(output_fol, "predictions_expln_noimp.npy"), predictions)
-    np.save(os.path.join(output_fol, "label_ids_expln_noimp.npy"), label_ids)
+    np.save(os.path.join(output_fol, "predictions.npy"), predictions)
+    np.save(os.path.join(output_fol, "label_ids.npy"), label_ids)
     print(results)

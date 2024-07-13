@@ -66,7 +66,6 @@ assert tokenizer.pad_token_id is not None
 assert tokenizer.bos_token_id is not None
 assert tokenizer.eos_token_id is not None
 
-# print(tokenizer(list(dataset['train'][239]['text']), return_token_type_ids=False)['input_ids'])
 print('Filtering all empty rows')
 dataset = dataset.filter(lambda example: len(example['text']) != 0)
 print(dataset)
