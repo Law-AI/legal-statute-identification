@@ -1,4 +1,4 @@
-# %%
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -14,7 +14,7 @@ import time
 from datasets import Features, Sequence, load_dataset
 from datasets.features import ClassLabel, Value
 from stas.model_fast import *
-#from hibert_model import *
+
 from transformers import AutoTokenizer, AutoModel
 from transformers import BatchEncoding, TrainingArguments, Trainer, AdamW
 from transformers.file_utils import ModelOutput
@@ -23,18 +23,13 @@ from torch.nn.utils.rnn import pack_padded_sequence, pad_packed_sequence
 from tqdm import tqdm
 from sklearn.metrics import precision_score, recall_score, f1_score
 
-# torch.backends.cudnn.enabled = False
-# torch.autograd.set_detect_anomaly(True)
-# torch._C._set_mkldnn_enabled(False)
 
-
-# %%
 os.environ["TOKENIZERS_PARALLELISM"] = 'true'
-# In[17]:
 
-root = sys.argv[1]
-model_src = sys.argv[2]
-output_fol = sys.argv[3]
+
+root = sys.argv[1]              # Dataset directory
+model_src = sys.argv[2]         # Model name/directory
+output_fol = sys.argv[3]        # Output Folder
 
 with open(os.path.join(root, "label_vocab.json")) as fr:
     label_vocab = json.load(fr)
@@ -58,7 +53,7 @@ label_schema = Features(
     }
 )
 
-# %%
+
 dataset = load_dataset('json', data_files={'train': os.path.join(root, "train2.json"), 
                                            'dev': os.path.join(root, "dev2.json"), 
                                            'test': os.path.join(root, "test2-expln3-noimp.json")}, field='data', 
@@ -66,27 +61,21 @@ dataset = load_dataset('json', data_files={'train': os.path.join(root, "train2.j
 label_dataset = load_dataset('json', data_files={'label': os.path.join(root, "label_descriptions.json")}, field='data', cache_dir='~/HDD/LSI-Cache')
 
 
-# %%
 dataset = dataset.map(schema.encode_example, features=schema)
 label_dataset = label_dataset.map(label_schema.encode_example, features=label_schema)
 
-# %%
 tokenizer = AutoTokenizer.from_pretrained(model_src) #, cache_dir='~/HDD/LSI-Cache')
 special_tokens = {'additional_special_tokens': ['<ENTITY>', '<ACT>', '<SECTION>']}
 tokenizer.add_special_tokens(special_tokens)
 tokenizer.add_tokens(special_tokens['additional_special_tokens'])
 
-dataset['train'] = dataset['train'].select([0])
-dataset['dev'] = dataset['dev'].select([0])
-
 dataset = dataset.map(lambda example: tokenizer(list(example['text']), return_token_type_ids=False), batched=False)
 label_dataset = label_dataset.map(lambda example: tokenizer([example['title'] + ": "] + list(example['text']), return_token_type_ids=False), batched=False)
 
-# %%
 dataset.set_format(type='torch', columns=['input_ids', 'attention_mask', 'labels'])
 label_dataset.set_format(type='torch', columns=['input_ids', 'attention_mask'])
 
-# %%
+# Generate label weights in the reverse order of their frequency
 def generate_label_weights():
     weights = torch.zeros(len(label_vocab))
     for exp in tqdm(dataset['train'], desc="Label Weights"):
@@ -102,7 +91,7 @@ else:
     with open(os.path.join(root, 'label_weights.pkl'), 'wb') as fw:
         pkl.dump(label_weights, fw)
 
-# %%
+# Data collator
 def collate_fn(examples):
     haslabels = True if 'labels' in examples[0] else False
     
@@ -127,13 +116,12 @@ def collate_fn(examples):
     else:
         return BatchEncoding({'input_ids': input_ids, 'attention_mask': attention_mask})
 
-# %%
+
 label_loader = torch.utils.data.DataLoader(label_dataset['label'], batch_size=len(label_vocab), collate_fn=collate_fn)
 for label_batch in label_loader:
     pass
 print(label_batch.input_ids.shape)
 
-# %%
 class BilinearAttentionFusion(nn.Module):
     def __init__(self, hidden_dim, intermediate_dim, drop=0.1):
         super().__init__()
@@ -176,24 +164,8 @@ class BilinearAttentionFusion(nn.Module):
         attention_matrix = attention_matrix.unsqueeze(1).repeat(1, self.intermediate_dim, 1, 1).view(-1, max_seq_len, num_labels) # [batch size * intermediate dim, max seq len, num labels]
         label_trans_states = label_trans_states.permute(0, 2, 1).unsqueeze(3).reshape(-1, num_labels, 1) # [batch size * intermediate dim, num labels, 1]
         input_fusion_states = torch.bmm(input_trans_states, torch.bmm(attention_matrix, label_trans_states)).squeeze().view(batch_size, self.intermediate_dim)  # [batch size, intermediate dim]
-        
-        # input_trans_states = input_trans_states.permute(0, 2, 1).unsqueeze(2) # [batch size, intermediate dim, 1, max seq len]
-        # attention_matrix = attention_matrix.unsqueeze(1).repeat(1, self.intermediate_dim, 1, 1) # [batch size, intermediate dim, max seq len, num labels]
-        # label_trans_states = label_trans_states.permute(0, 2, 1).unsqueeze(3) # [batch size, intermediate dim, num labels, 1]
-        # input_fusion_states = []
-        # for bidx in range(batch_size):
-        #     _input_trans_states = input_trans_states[bidx] # [intermediate dim, 1, max seq len]
-        #     _attention_matrix = attention_matrix[bidx] # [intermediate dim, max seq len, num labels]
-        #     _label_trans_states = label_trans_states[bidx] # [intermediate dim, num labels, 1]        
-            
-        #     # print(_input_trans_states.shape, _attention_matrix.shape, _label_trans_states.shape)
-        #     _input_fusion_states = torch.bmm(_input_trans_states, torch.bmm(_attention_matrix, _label_trans_states)).squeeze().view(self.intermediate_dim)  # [intermediate dim]
-        #     input_fusion_states.append(_input_fusion_states)
-        # input_fusion_states = torch.stack(input_fusion_states, dim=0) # [batch size, intermediate dim]
-            
-        
+                
         input_fusion_states = self.dropout(self.pool(input_fusion_states)) # [batch size, hidden dim]
-         
         return input_fusion_states       
         
         
@@ -216,8 +188,6 @@ class LstmAttn(nn.Module):
         outputs_packed = self.lstm(inputs_packed)[0]
         outputs = pad_packed_sequence(outputs_packed, batch_first=True)[0]
         
-        # outputs = self.lstm(inputs)[0]
-        
         activated_outputs = torch.tanh(self.dropout(self.attn_fc(outputs)))
         context = dynamic_context if dynamic_context is not None else self.context.expand(inputs.size(0), self.hidden_size)
         scores = torch.bmm(activated_outputs, context.unsqueeze(2)).squeeze(2)
@@ -234,7 +204,6 @@ class TextClassifierOutput(ModelOutput):
     hidden_states = None
 
 
-# In[28]:
 class HierBert(nn.Module):
     def __init__(self, encoder, drop=0.5):
         super().__init__()
@@ -284,13 +253,11 @@ class HierBert(nn.Module):
             attention_mask = attention_mask.any(dim=2)
             
         ## encode each example by aggregating Bert segment outputs
-        #print(encoder_outputs.shape)
         
         outputs, hidden = self.segment_encoder(inputs=encoder_outputs, attention_mask=attention_mask)
-        #outputs, hidden = encoder_outputs, None
         return outputs, hidden
 
-
+# Complete BAF model
 class BAFForTextClassfication(nn.Module):
     def __init__(self, hier_encoder, baf, num_labels, label_weights=None, drop=0.5):
         super().__init__()
@@ -340,22 +307,15 @@ class BAFForTextClassfication(nn.Module):
         if labels is not None:
             loss = self.loss_fct(logits, labels)
     
-        # print(input_hidden_states[0].shape, input_hidden_states[1].shape, loss)
-        # print(labels)
-    
         return TextClassifierOutput(loss=loss, logits=torch.sigmoid(logits), hidden_states=input_fusion_states)
-        # except torch.cuda.OutOfMemoryError:
-        #     print("+++ Skipping pass")
-        #     return TextClassifierOutput(loss=torch.tensor(0., device=input_ids.device, requires_grad=True), logits=torch.sigmoid(torch.rand(input_ids.shape, device=input_ids.device)), hidden_states=None)
 
-# %%
 bert = AutoModel.from_pretrained(model_src) #, cache_dir='~/HDD/LSI-Cache')
 bert.resize_token_embeddings(len(tokenizer), pad_to_multiple_of=8)
 hier_bert = HierBert(bert)
 baf = BilinearAttentionFusion(768, 512)
 model = BAFForTextClassfication(hier_bert, baf, len(label_vocab), label_weights=label_weights).cuda()
 
-# %%
+# Compute macro F1 scores
 def compute_metrics(p, threshold=0.5):
     metrics = {}
     preds = (p.predictions > threshold).astype(float)
@@ -366,7 +326,7 @@ def compute_metrics(p, threshold=0.5):
     metrics['f1'] = f1_score(refs, preds, average='macro', labels=list(label_vocab.values()))
     return metrics
 
-# %%
+# Different layers have different learning rates, here we set the learning rates for each layer
 def AdamWLLRD(model, bert_lr=3e-5, intermediate_lr=5e-4, top_lr=1e-3, wd=1e-2):
     opt_params = []
     named_params = list(model.named_parameters())
@@ -452,23 +412,18 @@ trainer = Trainer(
 
 if training_args.do_train:
     _, _, metrics = trainer.train(ignore_keys_for_eval=['hidden_states'], resume_from_checkpoint=False)
-    #torch.save(model.state_dict(), os.path.join(root, output_fol, "pytorch_model.bin"))
     trainer.save_model()
     trainer.save_metrics('train', metrics)
     
-# if training_args.do_eval:
-#     #dev_results = trainer.evaluate(ignore_keys=['hidden_states'])
-#     test_results = trainer.evaluate(eval_dataset=dataset['test'], ignore_keys=['hidden_states'])
-#     #print(dev_results)
-#     print(test_results)
-#     trainer.save_metrics('test', test_results)
-#     #with open(os.path.join(root, output_fol, "eval_results.json"), 'w') as fw:
-#     #json.dump(test_results, fw, indent=4)
+if training_args.do_eval:
+    test_results = trainer.evaluate(eval_dataset=dataset['test'], ignore_keys=['hidden_states'])
+    print(test_results)
+    trainer.save_metrics('test', test_results)
     
 if training_args.do_predict:
     model.load_state_dict(torch.load(os.path.join(root, output_fol, "pytorch_model.bin"), map_location='cuda'))
     predictions, label_ids, results = trainer.predict(test_dataset=dataset['test'], ignore_keys=['hidden_states'])
-    np.save(os.path.join(root, output_fol, "predictions_expln3_noimp.npy"), predictions)
-    np.save(os.path.join(root, output_fol, "label_ids_expln3_noimp.npy"), label_ids)
+    np.save(os.path.join(root, output_fol, "predictions.npy"), predictions)
+    np.save(os.path.join(root, output_fol, "label_ids.npy"), label_ids)
     print(results)
-    trainer.save_metrics('test_expln3_noimp', results)
+    trainer.save_metrics('test', results)
